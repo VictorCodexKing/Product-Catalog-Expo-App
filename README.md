@@ -15,6 +15,13 @@ Expo SDK 57 (managed), React Native 0.86, React 19, TypeScript, React Navigation
 
 Search, filter, status/category selectors, scanner, and the other footer tabs are disabled placeholders for later features. Product details and debounced search are planned; the native stack currently contains only Products.
 
+## Feature 2 — automatic pagination
+
+- Scrolling near the bottom requests another 20 products using `skip=20`, `skip=40`, and so on.
+- Prevents overlapping requests and duplicate rows, and stops at the last or an empty page.
+- Shows a separate loading footer; a failed page keeps existing rows visible and can be retried at the same offset.
+- Cancels requests on unmount and ignores stale responses.
+
 ## Run
 
 Requires Node.js 22.13+ and npm. Run these commands from this directory:
@@ -35,8 +42,8 @@ npm test
 ## Organization
 
 - `src/data/products.ts`: product types, HTTP requests, and API response validation.
-- `src/presentation/useProducts.ts`: request lifecycle and catalog states.
+- `src/presentation/useProducts.ts`: request lifecycle, catalog states, and pagination.
 - `src/presentation/ProductsScreen.tsx`: UI, product rows, and footer.
 - `App.tsx`: native-stack navigation and safe-area setup.
 
-Tests sit beside the data and presentation layers. Short inline comments explain request cancellation and the API boundary.
+Tests sit beside the data and presentation layers. They cover API failures, catalog states, pagination offsets, request guards, end-of-list handling, cancellation, and retries. Short inline comments explain request cancellation, pagination guards, and the API boundary.

@@ -58,7 +58,7 @@ export function ProductRow({ product }: { product: Product }) {
 function CatalogState({ status, retry }: { status: 'loading' | 'error' | 'empty'; retry: () => void }) {
   return (
     <View style={styles.state} accessibilityLiveRegion="polite">
-      {status === 'loading' ? <ActivityIndicator size="large" color={accent} accessibilityLabel="Loading products" /> : (
+      {status === 'loading' ? <ActivityIndicator accessible accessibilityRole="progressbar" size="large" color={accent} accessibilityLabel="Loading products" /> : (
         <View style={styles.stateIcon}><Ionicons name={status === 'error' ? 'cloud-offline-outline' : 'cube-outline'} size={30} color={accent} /></View>
       )}
       <Text style={styles.stateTitle}>{status === 'loading' ? 'Loading products' : status === 'error' ? 'Couldn’t load products' : 'No products yet'}</Text>
@@ -69,7 +69,7 @@ function CatalogState({ status, retry }: { status: 'loading' | 'error' | 'empty'
 }
 
 export default function ProductsScreen() {
-  const { products, total, status, retry } = useProducts();
+  const { products, total, status, retry, loadMore, loadingMore, pageError, retryMore, hasMore } = useProducts();
   return (
     <SafeAreaView style={styles.page}>
       <View style={styles.app}>
@@ -95,8 +95,20 @@ export default function ProductsScreen() {
         {status !== 'success' ? <CatalogState status={status} retry={retry} /> : (
           <FlatList data={products} keyExtractor={item => String(item.id)}
             renderItem={({ item }) => <ProductRow product={item} />}
+            onEndReached={loadMore} onEndReachedThreshold={0.4}
             contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
-            ListFooterComponent={<Text style={styles.listEnd}>{products.length} products in your catalog</Text>} />
+            ListFooterComponent={
+              <View style={styles.pagination} accessibilityLiveRegion="polite">
+                {loadingMore ? <><ActivityIndicator accessible color={accent} accessibilityRole="progressbar" accessibilityLabel="Loading more products" /><Text style={styles.footerText}>Loading more products…</Text></> : pageError ? (
+                  <View style={styles.pageError}>
+                    <Text style={styles.pageErrorText}>Couldn’t load more products.</Text>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Retry loading more products" onPress={retryMore} style={styles.retry}>
+                      <Text style={styles.retryText}>Try again</Text>
+                    </Pressable>
+                  </View>
+                ) : <Text style={styles.footerText}>{hasMore ? 'Scroll for more products' : 'You’ve reached the end'}</Text>}
+              </View>
+            } />
         )}
         <View style={styles.tabs} accessibilityRole="tablist">
           {tabs.map(tab => {
@@ -148,7 +160,10 @@ const styles = StyleSheet.create({
   price: { fontSize: 15, fontWeight: '700', color: '#252930' },
   stock: { fontSize: 11, color: '#7E858F' },
   category: { fontSize: 11, color: '#858B94', textTransform: 'capitalize' },
-  listEnd: { textAlign: 'center', fontSize: 12, color: '#858B94', paddingVertical: 25 },
+  pagination: { paddingVertical: 24, alignItems: 'center', gap: 10 },
+  footerText: { textAlign: 'center', fontSize: 12, color: '#858B94' },
+  pageError: { alignItems: 'center', gap: 12, padding: 18, width: '100%', backgroundColor: '#FFF4F3', borderRadius: 12 },
+  pageErrorText: { fontSize: 13, color: '#A73939' },
   state: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 14 },
   stateIcon: { backgroundColor: '#FFF2E8', padding: 18, borderRadius: 40 },
   stateTitle: { fontSize: 19, fontWeight: '600', color: '#252930', textAlign: 'center' },

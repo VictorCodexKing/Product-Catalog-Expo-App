@@ -11,15 +11,20 @@ beforeEach(() => { global.fetch = fetchMock; fetchMock.mockReset(); });
 afterAll(() => { global.fetch = originalFetch; });
 
 test('requests 20 products with the supplied offset and abort signal', async () => {
-  fetchMock.mockResolvedValue({ ok: true, json: async () => page });
+  fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ...page, skip: 20 }) });
   const signal = new AbortController().signal;
-  await expect(fetchProducts(20, signal)).resolves.toEqual(page);
+  await expect(fetchProducts(20, signal)).resolves.toEqual({ ...page, skip: 20 });
   expect(fetchMock).toHaveBeenCalledWith('https://dummyjson.com/products?limit=20&skip=20', { signal });
 });
 
 test('rejects an HTTP failure', async () => {
   fetchMock.mockResolvedValue({ ok: false, status: 503 });
   await expect(fetchProducts()).rejects.toThrow('Products unavailable (503)');
+});
+
+test('rejects a response for the wrong offset', async () => {
+  fetchMock.mockResolvedValue({ ok: true, json: async () => page });
+  await expect(fetchProducts(20)).rejects.toThrow('The product response was invalid');
 });
 
 test.each([null, { ...page, total: -1 }, { ...page, products: [{ ...page.products[0], price: '9.99' }] }])(

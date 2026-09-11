@@ -34,7 +34,7 @@ export async function fetchProducts(skip = 0, signal?: AbortSignal): Promise<Pro
   // Validate the API boundary so malformed data never reaches the list.
   if (!page || !Array.isArray(page.products) || !page.products.every(isProduct) ||
     !Number.isInteger(page.total) || page.total < 0 ||
-    !Number.isInteger(page.skip) || page.skip < 0 ||
+    !Number.isInteger(page.skip) || page.skip < 0 || page.skip !== skip ||
     !Number.isInteger(page.limit) || page.limit < 0) {
     throw new Error('The product response was invalid. Please try again.');
   }

@@ -1,4 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Image } from 'expo-image';
 import { ComponentProps, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -6,6 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Product } from '../data/products';
 import { useProducts } from './useProducts';
+import { CartButton, DiscountBadge } from './ProductBits';
+import { RootStackParamList } from './navigation';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 const accent = '#E86619';
@@ -28,16 +32,17 @@ function UpcomingControl({ label, icon, search = false }: { label: string; icon:
   );
 }
 
-export function ProductRow({ product }: { product: Product }) {
+export function ProductRow({ product, onPress }: { product: Product; onPress: () => void }) {
   const [imageFailed, setImageFailed] = useState(false);
   const inStock = product.stock > 0;
   return (
-    <View style={styles.product}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`View ${product.title}`} style={styles.product}>
       <View style={styles.thumbnail}>
         {imageFailed ? <Ionicons name="image-outline" size={27} color="#9CA2AA" accessibilityLabel="Image unavailable" /> : (
           <Image source={{ uri: product.thumbnail }} style={styles.image} contentFit="contain"
             accessibilityLabel={product.title} onError={() => setImageFailed(true)} />
         )}
+        <View style={styles.discount}><DiscountBadge percentage={product.discountPercentage} small /></View>
       </View>
       <View style={styles.productInfo}>
         <View style={[styles.badge, !inStock && styles.soldOut]}>
@@ -51,7 +56,7 @@ export function ProductRow({ product }: { product: Product }) {
         </View>
         <Text style={styles.category}>{product.category.replace(/-/g, ' ')}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -69,13 +74,17 @@ function CatalogState({ status, retry }: { status: 'loading' | 'error' | 'empty'
 }
 
 export default function ProductsScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { products, total, status, retry, loadMore, loadingMore, pageError, retryMore, hasMore } = useProducts();
   return (
     <SafeAreaView style={styles.page}>
       <View style={styles.app}>
         <View style={styles.header}>
           <View><Text style={styles.eyebrow}>THE EVERYDAY COLLECTION</Text><Text accessibilityRole="header" style={styles.heading}>Products</Text></View>
-          <View style={styles.avatar} accessibilityLabel="Victor24"><Text style={styles.avatarText}>V24</Text></View>
+          <View style={styles.headerActions}>
+            <CartButton onPress={() => navigation.navigate('Cart')} />
+            <View style={styles.avatar} accessibilityLabel="Victor24"><Text style={styles.avatarText}>V24</Text></View>
+          </View>
         </View>
         <View style={styles.toolbar}>
           <View style={styles.controls}>
@@ -94,7 +103,7 @@ export default function ProductsScreen() {
         </View>
         {status !== 'success' ? <CatalogState status={status} retry={retry} /> : (
           <FlatList data={products} keyExtractor={item => String(item.id)}
-            renderItem={({ item }) => <ProductRow product={item} />}
+            renderItem={({ item }) => <ProductRow product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />}
             onEndReached={loadMore} onEndReachedThreshold={0.4}
             contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
             ListFooterComponent={
@@ -138,6 +147,7 @@ const styles = StyleSheet.create({
   heading: { fontSize: 33, fontWeight: '700', letterSpacing: -1.1, color: '#20242B' },
   avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFF0E5', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#FFE1C9' },
   avatarText: { fontSize: 12, fontWeight: '700', color: '#A5521D' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   toolbar: { paddingHorizontal: 24, gap: 12, paddingBottom: 21 },
   controls: { flexDirection: 'row', gap: 10 },
   control: { minWidth: 44, minHeight: 44, paddingHorizontal: 11, borderWidth: 1, borderColor: '#E9EAED', borderRadius: 11, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FDFDFD' },
@@ -150,6 +160,7 @@ const styles = StyleSheet.create({
   product: { flexDirection: 'row', gap: 15, paddingVertical: 20, borderBottomWidth: 1, borderColor: '#EDEFF1', alignItems: 'center' },
   thumbnail: { width: 80, height: 86, borderRadius: 13, backgroundColor: '#F5F5F3', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   image: { width: '100%', height: '100%' },
+  discount: { position: 'absolute', top: 0, left: 0 },
   productInfo: { flex: 1, gap: 5 },
   badge: { flexDirection: 'row', gap: 4, alignItems: 'center', alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 3, backgroundColor: '#E6F6E9' },
   badgeText: { fontSize: 10, color: '#22763A', fontWeight: '600' },

@@ -1,7 +1,7 @@
-import { fetchProducts, PAGE_SIZE, ProductsPage } from '../products';
+import { fetchProduct, fetchProducts, PAGE_SIZE, ProductDetail, ProductsPage } from '../products';
 
 const page: ProductsPage = {
-  products: [{ id: 1, title: 'Perfume', thumbnail: 'https://example.com/1.png', price: 9.99, stock: 5, category: 'beauty' }],
+  products: [{ id: 1, title: 'Perfume', thumbnail: 'https://example.com/1.png', price: 9.99, discountPercentage: 10, stock: 5, category: 'beauty' }],
   total: 1, skip: 0, limit: PAGE_SIZE,
 };
 
@@ -33,3 +33,37 @@ test.each([null, { ...page, total: -1 }, { ...page, products: [{ ...page.product
     await expect(fetchProducts()).rejects.toThrow('The product response was invalid');
   },
 );
+
+const detail: ProductDetail = {
+  ...page.products[0], description: 'A complete product description with materials, fragrance notes, and care instructions.',
+  rating: 4.5, weight: 2, dimensions: { width: 10, height: 20, depth: 5 },
+  warrantyInformation: 'One year warranty', shippingInformation: 'Ships in 3 days', availabilityStatus: 'In Stock',
+  reviews: [{ rating: 5, comment: 'Excellent product.', date: '2026-01-01T12:00:00Z', reviewerName: 'Alex' }],
+  images: ['https://example.com/full.png'],
+};
+
+test('fetches a complete detail response and forwards the abort signal', async () => {
+  fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => detail });
+  const signal = new AbortController().signal;
+  await expect(fetchProduct(1, signal)).resolves.toEqual(detail);
+  expect(fetchMock).toHaveBeenCalledWith('https://dummyjson.com/products/1', { signal });
+});
+
+test('treats a missing product as empty', async () => {
+  fetchMock.mockResolvedValue({ ok: false, status: 404 });
+  await expect(fetchProduct(99999)).resolves.toBeNull();
+});
+
+test('rejects a detail HTTP failure', async () => {
+  fetchMock.mockResolvedValue({ ok: false, status: 500 });
+  await expect(fetchProduct(1)).rejects.toThrow('Product unavailable (500)');
+});
+
+test.each([
+  null, { ...detail, id: 2 }, { ...detail, description: null }, { ...detail, discountPercentage: '10' },
+  { ...detail, dimensions: null }, { ...detail, images: [null] }, { ...detail, reviews: [null] },
+  { ...detail, reviews: [{ ...detail.reviews[0], rating: 6 }] },
+])('rejects malformed or mismatched product detail: %p', async invalidDetail => {
+  fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => invalidDetail });
+  await expect(fetchProduct(1)).rejects.toThrow('The product response was invalid');
+});

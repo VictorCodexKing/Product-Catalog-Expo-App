@@ -4,19 +4,26 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import ProductsScreen from './src/presentation/ProductsScreen';
+import ProductDetailsScreen from './src/presentation/ProductDetailsScreen';
+import CartScreen from './src/presentation/CartScreen';
+import { CartProvider } from './src/presentation/CartContext';
+import { RootStackParamList } from './src/presentation/navigation';
 
-// Add the detail route here when that feature is introduced.
-const Stack = createNativeStackNavigator<{ Products: undefined }>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Products" component={ProductsScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <CartProvider>
+        <NavigationContainer>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Products" component={ProductsScreen} />
+            <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} getId={({ params }) => String(params.productId)} />
+            <Stack.Screen name="Cart" component={CartScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </CartProvider>
     </SafeAreaProvider>
   );
 }

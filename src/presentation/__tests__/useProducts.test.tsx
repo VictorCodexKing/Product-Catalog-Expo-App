@@ -6,7 +6,7 @@ import { useProducts } from '../useProducts';
 jest.mock('../../data/products', () => ({ ...jest.requireActual('../../data/products'), fetchProducts: jest.fn() }));
 const fetchMock = jest.mocked(fetchProducts);
 const page: ProductsPage = {
-  products: [{ id: 1, title: 'Perfume', thumbnail: 'https://example.com/1.png', price: 9.99, stock: 5, category: 'beauty' }],
+  products: [{ id: 1, title: 'Perfume', thumbnail: 'https://example.com/1.png', price: 9.99, discountPercentage: 10, stock: 5, category: 'beauty' }],
   total: 1, skip: 0, limit: PAGE_SIZE,
 };
 const pageAt = (skip: number, count = PAGE_SIZE, total = 45): ProductsPage => ({

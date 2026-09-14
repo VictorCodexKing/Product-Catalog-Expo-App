@@ -5,6 +5,9 @@ import { useProducts } from '../useProducts';
 
 jest.mock('../useProducts');
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
+const mockNavigate = jest.fn();
+jest.mock('@react-navigation/native', () => ({ useNavigation: () => ({ navigate: mockNavigate }) }));
+jest.mock('../CartContext', () => ({ useCart: () => ({ itemCount: 0 }) }));
 
 const useProductsMock = jest.mocked(useProducts);
 const retry = jest.fn();
@@ -15,8 +18,8 @@ const initialState = {
   loadMore, loadingMore: false, pageError: null, retryMore, hasMore: false,
 };
 const products = [
-  { id: 1, title: 'Everyday Perfume', thumbnail: 'https://example.com/perfume.png', price: 9.5, stock: 5, category: 'beauty' },
-  { id: 2, title: 'Travel Bag', thumbnail: 'https://example.com/bag.png', price: 24, stock: 0, category: 'womens-bags' },
+  { id: 1, title: 'Everyday Perfume', thumbnail: 'https://example.com/perfume.png', price: 9.5, discountPercentage: 10.48, stock: 5, category: 'beauty' },
+  { id: 2, title: 'Travel Bag', thumbnail: 'https://example.com/bag.png', price: 24, discountPercentage: 0, stock: 0, category: 'womens-bags' },
 ];
 
 beforeEach(() => {
@@ -96,4 +99,15 @@ test('requests another page when the list reaches its end', async () => {
   // fireEvent bubbles from a visible row to the enclosing FlatList callback.
   await fireEvent(screen.getByText(products[0].title), 'endReached', { distanceFromEnd: 0 });
   expect(loadMore).toHaveBeenCalledTimes(1);
+});
+
+test('opens the selected product and shows its rounded discount badge', async () => {
+  useProductsMock.mockReturnValue({ ...initialState, products, total: 2, status: 'success' });
+  await render(<ProductsScreen />);
+  expect(screen.getByText('-10%')).toBeOnTheScreen();
+  expect(screen.queryByText('-0%')).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: 'View Everyday Perfume' }));
+  expect(mockNavigate).toHaveBeenCalledWith('ProductDetails', { productId: 1 });
+  await fireEvent.press(screen.getByRole('button', { name: 'Open cart, 0 items' }));
+  expect(mockNavigate).toHaveBeenCalledWith('Cart');
 });

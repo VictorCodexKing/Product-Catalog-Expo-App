@@ -2,7 +2,7 @@ import { createContext, PropsWithChildren, useCallback, useContext, useState } f
 
 import { Product } from '../data/products';
 
-type CartItem = { product: Product; quantity: number };
+export type CartItem = { product: Product; quantity: number };
 type CartState = {
   items: CartItem[];
   itemCount: number;

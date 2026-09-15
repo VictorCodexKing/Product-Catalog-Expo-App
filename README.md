@@ -13,7 +13,7 @@ Expo SDK 57 (managed), React Native 0.86, React 19, TypeScript, React Navigation
 - Distinct loading, error with retry, empty, and success views; image fallback on failure.
 - Footer order: Home, Products, Orders, More.
 
-Search, filter, status/category selectors, scanner, and the other footer tabs are disabled placeholders for later features.
+Search, filter, status/category selectors, scanner, Home, and Orders are disabled placeholders for later features.
 
 ## Feature 2 — automatic pagination
 
@@ -27,11 +27,19 @@ Search, filter, status/category selectors, scanner, and the other footer tabs ar
 - Tap a product to load its full details from `GET /products/{id}`. Back navigation preserves the catalog and scroll position.
 - Image gallery, full description, price, dimensions, weight, availability, shipping, warranty, and every review.
 - Product and review ratings appear only as stars; screen readers can read the exact rating.
-- Red discount badges on list thumbnails and details. Badges round to whole percentages like the reference. The API price stays the selling price; the crossed-out reference price is calculated using the exact discount percentage.
+- Small red discount badges on list thumbnails; details keep the discount beside the price only. Badges round to whole percentages like the reference. The API price stays the selling price; the crossed-out reference price is calculated using the exact discount percentage.
 - Dimensions and weight display the API values without inventing units, which DummyJSON does not specify.
 - Add selected quantities to the cart, update quantities or remove items, and view the total. Quantities respect stock limits.
-- Cart state lasts while the app is open and survives screen navigation; restarting the app resets it. Checkout is outside this feature.
+- Cart state lasts while the app is open and survives screen navigation; restarting the app resets it.
 - Details have separate loading, retryable error, and product-not-found states. Empty reviews and unavailable images have fallbacks.
+
+## Feature 4 — purchase controls and cart refinements
+
+- Fixed detail footer with selected-quantity total, quantity controls, Add to Cart, and Buy Now.
+- Larger cart thumbnails, selling and original prices, quantity controls on the right, and swipe-left to reveal Delete. The ellipsis button offers the same action without a swipe.
+- Checkout reviews the entire cart; Buy Now reviews only the selected product and quantity, leaving the existing cart intact.
+- Checkout is a local demo: no payment, delivery, or server order is created. Confirming a cart checkout clears that cart; confirming Buy Now preserves it.
+- Shopping cart and notification icons in the catalog header. More contains the local preview account information; notifications show an empty state.
 
 ## Run
 

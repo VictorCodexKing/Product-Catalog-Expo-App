@@ -38,10 +38,13 @@ test('shows the complete description, pricing, specifications, and every review 
   expect(useProductMock).toHaveBeenCalledWith(1);
   expect(screen.getByText(product.title)).toBeOnTheScreen();
   expect(screen.getByText(product.description).props.numberOfLines).toBeUndefined();
-  expect(screen.getByText('$9.99')).toBeOnTheScreen();
+  expect(screen.getByLabelText('Selected quantity total: $9.99')).toBeOnTheScreen();
   expect(screen.getByText('$11.16')).toHaveStyle({ textDecorationLine: 'line-through' });
   expect(screen.getByLabelText('Before discount: $11.16')).toBeOnTheScreen();
-  expect(screen.getAllByText('-10%')).toHaveLength(2);
+  expect(screen.getAllByText('-10%')).toHaveLength(1);
+  expect(screen.getByText('Description')).toBeOnTheScreen();
+  expect(screen.queryByText('PRODUCT DETAILS')).toBeNull();
+  expect(screen.queryByText('Find your everyday favorite.')).toBeNull();
   for (const text of ['width', 'height', 'depth', '10', '20', '8', 'Weight', '7', 'Everyday', 'In Stock · 3 available', product.shippingInformation, product.warrantyInformation]) {
     expect(screen.getByText(text)).toBeOnTheScreen();
   }
@@ -57,8 +60,7 @@ test('shows the complete description, pricing, specifications, and every review 
 
 test('renders both real gallery images after layout and selects the second image', async () => {
   await renderDetails();
-  // Layout bubbles from the gallery badge to its measured hero container.
-  await fireEvent(screen.getAllByText('-10%')[0], 'layout', { nativeEvent: { layout: { width: 390, height: 285, x: 0, y: 0 } } });
+  await fireEvent(screen.getByTestId('product-gallery'), 'layout', { nativeEvent: { layout: { width: 390, height: 285, x: 0, y: 0 } } });
   for (const [index, uri] of product.images.entries()) {
     expect(screen.getByLabelText(`${product.title}, image ${index + 1} of 2`)).toHaveProp('source', [{ uri }]);
   }
@@ -76,18 +78,30 @@ test('adds the selected quantity to the real cart and blocks repeated additions 
   await fireEvent.press(screen.getByRole('button', { name: 'Increase quantity' }));
   await fireEvent.press(screen.getByRole('button', { name: 'Add to cart' }));
   expect(screen.getByRole('button', { name: 'Open cart, 2 items' })).toBeOnTheScreen();
-  expect(screen.getByText('2 items in your cart')).toBeOnTheScreen();
-  expect(screen.getByRole('button', { name: 'Increase quantity' })).toBeDisabled();
+  await fireEvent.press(screen.getByRole('button', { name: 'Increase quantity' }));
+  expect(screen.getByRole('button', { name: 'Add to cart' })).toBeDisabled();
+  expect(screen.getByLabelText('Selected quantity total: $19.98')).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: 'Decrease quantity' }));
   await fireEvent.press(screen.getByRole('button', { name: 'Add to cart' }));
   expect(screen.getByRole('button', { name: 'Open cart, 3 items' })).toBeOnTheScreen();
   expect(screen.getByRole('button', { name: 'Add to cart' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Buy now' })).toBeEnabled();
   expect(screen.getByText('Stock limit reached')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: 'Add to cart' }));
   expect(screen.getByRole('button', { name: 'Open cart, 3 items' })).toBeOnTheScreen();
 });
 
+test('Buy Now checks out the selected quantity directly without adding it to the cart', async () => {
+  await renderDetails();
+  await fireEvent.press(screen.getByRole('button', { name: 'Increase quantity' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Buy now' }));
+  expect(navigation.navigate).toHaveBeenCalledWith('Checkout', { buyNow: { product, quantity: 2 } });
+  expect(screen.getByRole('button', { name: 'Open cart, 0 items' })).toBeOnTheScreen();
+});
+
 test('prevents adding an out-of-stock product', async () => {
   await renderDetails({ product: { ...product, stock: 0, availabilityStatus: 'Out of Stock' } });
+  expect(screen.getByRole('button', { name: 'Buy now' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Add to cart' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Increase quantity' })).toBeDisabled();
   expect(screen.getByLabelText('Quantity 0')).toBeOnTheScreen();

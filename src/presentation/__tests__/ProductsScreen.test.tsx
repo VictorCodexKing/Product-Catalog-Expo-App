@@ -111,3 +111,12 @@ test('opens the selected product and shows its rounded discount badge', async ()
   await fireEvent.press(screen.getByRole('button', { name: 'Open cart, 0 items' }));
   expect(mockNavigate).toHaveBeenCalledWith('Cart');
 });
+
+test('opens notifications from the header and account settings through More', async () => {
+  await render(<ProductsScreen />);
+  expect(screen.queryByText('V24')).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: 'Open notifications' }));
+  expect(mockNavigate).toHaveBeenCalledWith('Notifications');
+  await fireEvent.press(screen.getByRole('tab', { name: 'More' }));
+  expect(mockNavigate).toHaveBeenCalledWith('More');
+});

@@ -6,6 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCart } from './CartContext';
 import type { RootStackParamList } from './navigation';
+import { ProductPrice } from './ProductBits';
+import SwipeableCartItem from './SwipeableCartItem';
 
 export default function CartScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Cart'>) {
   const { items, itemCount, total, setQuantity } = useCart();
@@ -20,44 +22,42 @@ export default function CartScreen({ navigation }: NativeStackScreenProps<RootSt
             <Text accessibilityRole="header" style={styles.heading}>Cart</Text>
             <Text style={styles.muted}>{itemCount} {itemCount === 1 ? 'item' : 'items'}</Text>
           </View>
-          <Ionicons name="bag-outline" size={24} color="#E86619" />
+          <Ionicons name="cart-outline" size={24} color="#E86619" />
         </View>
         {items.length ? <>
           <FlatList data={items} keyExtractor={item => String(item.product.id)} contentContainerStyle={styles.list}
             renderItem={({ item: { product, quantity } }) => (
-              <View style={styles.item}>
+              <SwipeableCartItem title={product.title} onDelete={() => setQuantity(product.id, 0)}>
                 <Image source={{ uri: product.thumbnail }} contentFit="contain" accessibilityLabel={product.title} style={styles.image} />
                 <View style={styles.info}>
                   <Text style={styles.title} numberOfLines={2}>{product.title}</Text>
-                  <Text style={styles.price}>${product.price.toFixed(2)} <Text style={styles.muted}>each</Text></Text>
-                  <View style={styles.actions}>
-                    <View style={styles.stepper}>
-                      <Pressable accessibilityRole="button" accessibilityLabel={`Decrease ${product.title} quantity`}
-                        onPress={() => setQuantity(product.id, quantity - 1)} style={styles.iconButton}>
-                        <Ionicons name="remove" size={18} color="#252930" />
-                      </Pressable>
-                      <Text accessibilityLabel={`${product.title} quantity: ${quantity}`} style={styles.quantity}>{quantity}</Text>
-                      <Pressable accessibilityRole="button" accessibilityLabel={`Increase ${product.title} quantity`}
-                        disabled={quantity >= product.stock} accessibilityState={{ disabled: quantity >= product.stock }}
-                        onPress={() => setQuantity(product.id, quantity + 1)} style={styles.iconButton}>
-                        <Ionicons name="add" size={18} color={quantity >= product.stock ? '#BCC0C6' : '#252930'} />
-                      </Pressable>
-                    </View>
-                    <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${product.title}`}
-                      onPress={() => setQuantity(product.id, 0)} style={styles.remove}>
-                      <Text style={styles.removeText}>Remove</Text>
-                    </Pressable>
-                  </View>
+                  <ProductPrice product={product} compact />
+                  <Text style={styles.muted}>Price per item</Text>
                   {quantity >= product.stock && <Text style={styles.muted}>Stock limit reached</Text>}
                 </View>
-              </View>
+                <View style={styles.stepper}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Decrease ${product.title} quantity`}
+                    onPress={() => setQuantity(product.id, quantity - 1)} style={styles.iconButton}>
+                    <Ionicons name="remove" size={18} color="#252930" />
+                  </Pressable>
+                  <Text accessibilityLabel={`${product.title} quantity: ${quantity}`} style={styles.quantity}>{quantity}</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Increase ${product.title} quantity`}
+                    disabled={quantity >= product.stock} accessibilityState={{ disabled: quantity >= product.stock }}
+                    onPress={() => setQuantity(product.id, quantity + 1)} style={styles.iconButton}>
+                    <Ionicons name="add" size={18} color={quantity >= product.stock ? '#BCC0C6' : '#252930'} />
+                  </Pressable>
+                </View>
+              </SwipeableCartItem>
             )} />
           <View style={styles.summary} accessibilityLiveRegion="polite">
-            <Text style={styles.totalLabel}>Total</Text><Text style={styles.total}>${total.toFixed(2)}</Text>
+            <View style={styles.totalRow}><Text style={styles.totalLabel}>Total</Text><Text style={styles.total}>${total.toFixed(2)}</Text></View>
+            <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Checkout')} style={styles.checkout}>
+              <Text style={styles.browseText}>Checkout</Text><Ionicons name="arrow-forward" size={19} color="#FFFFFF" />
+            </Pressable>
           </View>
         </> : (
           <View style={styles.empty}>
-            <View style={styles.emptyIcon}><Ionicons name="bag-outline" size={36} color="#E86619" /></View>
+            <View style={styles.emptyIcon}><Ionicons name="cart-outline" size={36} color="#E86619" /></View>
             <Text style={styles.emptyTitle}>Your cart is empty</Text>
             <Text style={styles.emptyDescription}>Find something you love in the collection.</Text>
             <Pressable accessibilityRole="button" onPress={() => navigation.popTo('Products')} style={styles.browse}>
@@ -78,18 +78,15 @@ const styles = StyleSheet.create({
   heading: { fontSize: 28, fontWeight: '700', color: '#252930' },
   muted: { fontSize: 12, fontWeight: '400', color: '#7E858F' },
   list: { paddingHorizontal: 24 },
-  item: { flexDirection: 'row', gap: 14, paddingVertical: 22, borderBottomWidth: 1, borderColor: '#ECEEF1' },
-  image: { width: 72, height: 80, borderRadius: 12, backgroundColor: '#F5F5F3' },
+  image: { width: 88, height: 100, borderRadius: 14, backgroundColor: '#F5F5F3' },
   info: { flex: 1, gap: 7 },
   title: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: '#252930' },
-  price: { fontSize: 16, fontWeight: '700', color: '#252930' },
-  actions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  stepper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E9EAED', borderRadius: 10 },
+  stepper: { alignItems: 'center', borderWidth: 1, borderColor: '#E9EAED', borderRadius: 24 },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   quantity: { minWidth: 24, textAlign: 'center', fontSize: 14, fontWeight: '600', color: '#252930' },
-  remove: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
-  removeText: { color: '#A73939', fontSize: 12 },
-  summary: { padding: 24, borderTopWidth: 1, borderColor: '#ECEEF1', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  summary: { padding: 24, borderTopWidth: 1, borderColor: '#ECEEF1', gap: 18 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  checkout: { minHeight: 52, borderRadius: 18, backgroundColor: '#20242B', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
   totalLabel: { fontSize: 17, fontWeight: '600', color: '#252930' },
   total: { fontSize: 26, fontWeight: '700', color: '#252930' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 14 },

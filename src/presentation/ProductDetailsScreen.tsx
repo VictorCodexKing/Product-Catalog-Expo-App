@@ -13,13 +13,15 @@ import { useProduct } from './useProduct';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetails'>;
 
-function DetailContent({ product }: { product: ProductDetail }) {
+function DetailContent({ product, buyNow }: { product: ProductDetail; buyNow: (quantity: number) => void }) {
   const { items, addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const inCart = items.find(item => item.product.id === product.id)?.quantity ?? 0;
   const remaining = Math.max(0, product.stock - inCart);
-  const amount = Math.min(quantity, remaining);
+  const amount = Math.min(quantity, product.stock);
   const inStock = product.stock > 0;
+  const cannotAdd = !amount || amount > remaining;
+  const selectionTotal = (Math.round(product.price * 100) * amount / 100).toFixed(2);
 
   return (
     <>
@@ -38,7 +40,7 @@ function DetailContent({ product }: { product: ProductDetail }) {
           <View style={styles.ratingRow}><Stars rating={product.rating} /><Text style={styles.muted}>{product.reviews.length} {product.reviews.length === 1 ? 'review' : 'reviews'}</Text></View>
 
           <View style={styles.section}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>About this product</Text>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>Description</Text>
             <Text style={styles.description}>{product.description || 'No description available.'}</Text>
           </View>
 
@@ -75,23 +77,29 @@ function DetailContent({ product }: { product: ProductDetail }) {
         </View>
       </ScrollView>
       <View style={styles.purchase}>
-        <Text accessibilityLiveRegion="polite" style={styles.notice}>{inCart ? `${inCart} ${inCart === 1 ? 'item' : 'items'} in your cart` : inStock ? 'Find your everyday favorite.' : 'This product is currently unavailable.'}</Text>
         <View style={styles.purchaseRow}>
+          <Text accessibilityLabel={`Selected quantity total: $${selectionTotal}`} style={styles.purchasePrice}>${selectionTotal}</Text>
           <View style={styles.stepper}>
             <Pressable accessibilityRole="button" accessibilityLabel="Decrease quantity" disabled={amount <= 1}
               style={styles.step} onPress={() => setQuantity(amount - 1)}><Ionicons name="remove" size={18} color={amount <= 1 ? '#BCC0C6' : '#20242B'} /></Pressable>
             <Text accessibilityLabel={`Quantity ${amount}`} style={styles.quantity}>{amount}</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Increase quantity" disabled={amount >= remaining}
-              style={styles.step} onPress={() => setQuantity(amount + 1)}><Ionicons name="add" size={18} color={amount >= remaining ? '#BCC0C6' : '#20242B'} /></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Increase quantity" disabled={amount >= product.stock}
+              style={styles.step} onPress={() => setQuantity(amount + 1)}><Ionicons name="add" size={18} color={amount >= product.stock ? '#BCC0C6' : '#20242B'} /></Pressable>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Add to cart" disabled={remaining === 0}
-            style={[styles.addButton, remaining === 0 && styles.disabledButton]} onPress={() => {
-              if (!amount) return;
+        </View>
+        <View style={styles.purchaseRow}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Add to cart" disabled={cannotAdd}
+            style={[styles.addButton, cannotAdd && styles.disabledButton]} onPress={() => {
+              if (cannotAdd) return;
               addItem(product, amount);
               setQuantity(1);
             }}>
-            <Ionicons name="bag-add-outline" size={19} color="#FFFFFF" />
-            <Text style={styles.addText}>{!inStock ? 'Out of stock' : remaining === 0 ? 'Stock limit reached' : 'Add to Cart'}</Text>
+            <Ionicons name="cart-outline" size={19} color="#FFFFFF" />
+            <Text style={styles.addText}>{!inStock ? 'Out of stock' : remaining === 0 ? 'Stock limit reached' : cannotAdd ? `Only ${remaining} more available` : 'Add to Cart'}</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Buy now" disabled={!inStock}
+            style={[styles.addButton, styles.buyButton, !inStock && styles.disabledButton]} onPress={() => buyNow(amount)}>
+            <Text style={styles.addText}>Buy Now</Text>
           </Pressable>
         </View>
       </View>
@@ -106,10 +114,10 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
       <View style={styles.app}>
         <View style={styles.header}>
           <Pressable accessibilityRole="button" accessibilityLabel="Back to products" onPress={() => navigation.goBack()} style={styles.back}><Ionicons name="chevron-back" size={25} color="#20242B" /></Pressable>
-          <Text style={styles.headerTitle}>PRODUCT DETAILS</Text>
           <CartButton onPress={() => navigation.navigate('Cart')} />
         </View>
-        {status === 'success' && product ? <DetailContent key={product.id} product={product} /> : (
+        {status === 'success' && product ? <DetailContent key={product.id} product={product}
+          buyNow={quantity => navigation.navigate('Checkout', { buyNow: { product, quantity } })} /> : (
           <View style={styles.state} accessibilityLiveRegion="polite">
             {status === 'loading' ? <ActivityIndicator accessible accessibilityRole="progressbar" accessibilityLabel="Loading product" color="#E86619" size="large" /> : <Ionicons name={status === 'error' ? 'cloud-offline-outline' : 'cube-outline'} size={40} color="#E86619" />}
             <Text style={styles.stateTitle}>{status === 'loading' ? 'Loading product' : status === 'empty' ? 'Product not found' : 'Couldn’t load this product'}</Text>
@@ -126,7 +134,6 @@ const styles = StyleSheet.create({
   page: { flex: 1, alignItems: 'center', backgroundColor: '#F4F5F7' },
   app: { width: '100%', maxWidth: 560, flex: 1, backgroundColor: '#FFFFFF' },
   header: { paddingHorizontal: 20, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F3F4F5' },
-  headerTitle: { fontSize: 10, letterSpacing: 1.6, fontWeight: '700', color: '#7E858F' },
   back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: '#FFFFFF' },
   scroll: { flex: 1 },
   content: { marginTop: -10, padding: 24, paddingBottom: 32, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: '#FFFFFF', gap: 14 },
@@ -165,13 +172,14 @@ const styles = StyleSheet.create({
   reviewDate: { fontSize: 10, color: '#959AA2' },
   reviewComment: { color: '#717984', fontSize: 13, lineHeight: 20 },
   purchase: { borderTopWidth: 1, borderColor: '#ECEEF0', paddingHorizontal: 24, paddingBottom: 14, paddingTop: 10, gap: 9, backgroundColor: '#FFFFFF' },
-  notice: { color: '#68746C', fontSize: 11, textAlign: 'center' },
-  purchaseRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  purchasePrice: { fontSize: 27, fontWeight: '700', letterSpacing: -0.7, color: '#20242B', flexShrink: 1 },
+  purchaseRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   stepper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E4E6E9', borderRadius: 25 },
-  step: { width: 38, height: 48, alignItems: 'center', justifyContent: 'center' },
+  step: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   quantity: { minWidth: 26, fontSize: 14, fontWeight: '600', color: '#20242B', textAlign: 'center' },
   addButton: { flex: 1, minHeight: 50, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 18, backgroundColor: '#20242B', flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center' },
   addText: { fontSize: 13, fontWeight: '600', color: '#FFFFFF', flexShrink: 1, textAlign: 'center' },
+  buyButton: { backgroundColor: '#E86619' },
   disabledButton: { backgroundColor: '#A4A9B1' },
   state: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 28, gap: 16 },
   stateTitle: { fontSize: 19, fontWeight: '600', color: '#20242B', textAlign: 'center' },

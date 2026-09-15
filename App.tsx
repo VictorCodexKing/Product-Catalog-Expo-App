@@ -6,6 +6,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ProductsScreen from './src/presentation/ProductsScreen';
 import ProductDetailsScreen from './src/presentation/ProductDetailsScreen';
 import CartScreen from './src/presentation/CartScreen';
+import CheckoutScreen from './src/presentation/CheckoutScreen';
+import { MoreScreen, NotificationsScreen } from './src/presentation/AccountScreens';
 import { CartProvider } from './src/presentation/CartContext';
 import { RootStackParamList } from './src/presentation/navigation';
 
@@ -21,6 +23,9 @@ export default function App() {
             <Stack.Screen name="Products" component={ProductsScreen} />
             <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} getId={({ params }) => String(params.productId)} />
             <Stack.Screen name="Cart" component={CartScreen} />
+            <Stack.Screen name="Checkout" component={CheckoutScreen} />
+            <Stack.Screen name="More" component={MoreScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </CartProvider>

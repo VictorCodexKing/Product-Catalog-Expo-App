@@ -10,15 +10,10 @@ import { Product } from '../data/products';
 import { useProducts } from './useProducts';
 import { CartButton, DiscountBadge } from './ProductBits';
 import { RootStackParamList } from './navigation';
+import FooterTabs from './FooterTabs';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 const accent = '#E86619';
-const tabs: { title: string; icon: IconName }[] = [
-  { title: 'Home', icon: 'home-outline' },
-  { title: 'Products', icon: 'cube-outline' },
-  { title: 'Orders', icon: 'receipt-outline' },
-  { title: 'More', icon: 'ellipsis-horizontal' },
-];
 
 // These controls reserve the reference layout for later catalog features.
 function UpcomingControl({ label, icon, search = false }: { label: string; icon: IconName; search?: boolean }) {
@@ -83,7 +78,8 @@ export default function ProductsScreen() {
           <View><Text style={styles.eyebrow}>THE EVERYDAY COLLECTION</Text><Text accessibilityRole="header" style={styles.heading}>Products</Text></View>
           <View style={styles.headerActions}>
             <CartButton onPress={() => navigation.navigate('Cart')} />
-            <View style={styles.avatar} accessibilityLabel="Victor24"><Text style={styles.avatarText}>V24</Text></View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open notifications" style={styles.notification}
+              onPress={() => navigation.navigate('Notifications')}><Ionicons name="notifications-outline" size={23} color="#20242B" /></Pressable>
           </View>
         </View>
         <View style={styles.toolbar}>
@@ -119,21 +115,7 @@ export default function ProductsScreen() {
               </View>
             } />
         )}
-        <View style={styles.tabs} accessibilityRole="tablist">
-          {tabs.map(tab => {
-            const selected = tab.title === 'Products';
-            return (
-              <Pressable key={tab.title} disabled={!selected} accessibilityRole="tab"
-                accessibilityLabel={selected ? tab.title : `${tab.title}, coming soon`}
-                accessibilityState={{ selected, disabled: !selected }} style={styles.tab}>
-                <View style={[styles.tabIcon, selected && styles.selectedTab]}>
-                  <Ionicons name={tab.icon} size={23} color={selected ? accent : '#91959C'} />
-                </View>
-                <Text style={[styles.tabLabel, selected && styles.selectedLabel]}>{tab.title}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <FooterTabs active="Products" />
       </View>
     </SafeAreaView>
   );
@@ -145,8 +127,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 26, paddingBottom: 22 },
   eyebrow: { fontSize: 9, fontWeight: '700', letterSpacing: 1.6, color: '#8B7B6F', marginBottom: 7 },
   heading: { fontSize: 33, fontWeight: '700', letterSpacing: -1.1, color: '#20242B' },
-  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFF0E5', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#FFE1C9' },
-  avatarText: { fontSize: 12, fontWeight: '700', color: '#A5521D' },
+  notification: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#EAEBEE' },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   toolbar: { paddingHorizontal: 24, gap: 12, paddingBottom: 21 },
   controls: { flexDirection: 'row', gap: 10 },
@@ -181,10 +162,4 @@ const styles = StyleSheet.create({
   stateDescription: { color: '#7E858F', fontSize: 13, textAlign: 'center', lineHeight: 20 },
   retry: { backgroundColor: accent, borderRadius: 11, paddingHorizontal: 24, paddingVertical: 14 },
   retryText: { fontSize: 13, fontWeight: '600', color: '#FFFFFF' },
-  tabs: { flexDirection: 'row', borderTopWidth: 1, borderColor: '#ECEEF1', paddingTop: 10, paddingBottom: 12, backgroundColor: '#FFFFFF' },
-  tab: { flex: 1, alignItems: 'center', gap: 5 },
-  tabIcon: { paddingHorizontal: 20, paddingVertical: 7, borderRadius: 14 },
-  selectedTab: { backgroundColor: '#FFF0E5' },
-  tabLabel: { fontSize: 11, color: '#91959C' },
-  selectedLabel: { color: accent, fontWeight: '700' },
 });

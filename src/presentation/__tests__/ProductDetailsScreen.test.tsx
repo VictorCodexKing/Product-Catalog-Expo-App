@@ -5,8 +5,10 @@ import { ProductDetail } from '../../data/products';
 import { CartProvider } from '../CartContext';
 import ProductDetailsScreen from '../ProductDetailsScreen';
 import { useProduct } from '../useProduct';
+import { purchaseFeedback } from '../purchaseFeedback';
 
 jest.mock('../useProduct');
+jest.mock('../purchaseFeedback');
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 
 const useProductMock = jest.mocked(useProduct);
@@ -66,6 +68,8 @@ test('renders both real gallery images after layout and selects the second image
   }
   await fireEvent.press(screen.getByRole('button', { name: 'Show image 2' }));
   expect(screen.getByRole('button', { name: 'Show image 2', selected: true })).toBeOnTheScreen();
+  await fireEvent(screen.getByLabelText(`${product.title}, image 1 of 2`), 'scroll', { nativeEvent: { contentOffset: { x: 0, y: 0 } } });
+  expect(screen.getByRole('button', { name: 'Show image 1', selected: true })).toBeOnTheScreen();
 });
 
 test('adds the selected quantity to the real cart and blocks repeated additions at the stock limit', async () => {
@@ -78,6 +82,8 @@ test('adds the selected quantity to the real cart and blocks repeated additions 
   await fireEvent.press(screen.getByRole('button', { name: 'Increase quantity' }));
   await fireEvent.press(screen.getByRole('button', { name: 'Add to cart' }));
   expect(screen.getByRole('button', { name: 'Open cart, 2 items' })).toBeOnTheScreen();
+  expect(screen.getByText('Added to Cart')).toBeOnTheScreen();
+  expect(purchaseFeedback).toHaveBeenCalledWith('cart');
   await fireEvent.press(screen.getByRole('button', { name: 'Increase quantity' }));
   expect(screen.getByRole('button', { name: 'Add to cart' })).toBeDisabled();
   expect(screen.getByLabelText('Selected quantity total: $19.98')).toBeOnTheScreen();
@@ -96,6 +102,7 @@ test('Buy Now checks out the selected quantity directly without adding it to the
   await fireEvent.press(screen.getByRole('button', { name: 'Increase quantity' }));
   await fireEvent.press(screen.getByRole('button', { name: 'Buy now' }));
   expect(navigation.navigate).toHaveBeenCalledWith('Checkout', { buyNow: { product, quantity: 2 } });
+  expect(purchaseFeedback).toHaveBeenCalledWith('buy');
   expect(screen.getByRole('button', { name: 'Open cart, 0 items' })).toBeOnTheScreen();
 });
 
@@ -107,6 +114,8 @@ test('prevents adding an out-of-stock product', async () => {
   expect(screen.getByLabelText('Quantity 0')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: 'Add to cart' }));
   expect(screen.getByRole('button', { name: 'Open cart, 0 items' })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: 'Buy now' }));
+  expect(purchaseFeedback).not.toHaveBeenCalled();
 });
 
 test('opens the cart and navigates back to products', async () => {

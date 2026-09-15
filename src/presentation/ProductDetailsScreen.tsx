@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,12 +10,19 @@ import { RootStackParamList } from './navigation';
 import { CartButton, ProductPrice, Stars } from './ProductBits';
 import ProductGallery from './ProductGallery';
 import { useProduct } from './useProduct';
+import { purchaseFeedback } from './purchaseFeedback';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetails'>;
 
 function DetailContent({ product, buyNow }: { product: ProductDetail; buyNow: (quantity: number) => void }) {
   const { items, addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
+  const [added, setAdded] = useState(0);
+  useEffect(() => {
+    if (!added) return;
+    const timer = setTimeout(() => setAdded(0), 1800);
+    return () => clearTimeout(timer);
+  }, [added]);
   const inCart = items.find(item => item.product.id === product.id)?.quantity ?? 0;
   const remaining = Math.max(0, product.stock - inCart);
   const amount = Math.min(quantity, product.stock);
@@ -89,16 +96,22 @@ function DetailContent({ product, buyNow }: { product: ProductDetail; buyNow: (q
         </View>
         <View style={styles.purchaseRow}>
           <Pressable accessibilityRole="button" accessibilityLabel="Add to cart" disabled={cannotAdd}
-            style={[styles.addButton, cannotAdd && styles.disabledButton]} onPress={() => {
+            style={({ pressed }) => [styles.addButton, cannotAdd && styles.disabledButton, pressed && styles.pressed]} onPress={() => {
               if (cannotAdd) return;
               addItem(product, amount);
+              setAdded(previous => previous + 1);
+              void purchaseFeedback('cart');
               setQuantity(1);
             }}>
-            <Ionicons name="cart-outline" size={19} color="#FFFFFF" />
-            <Text style={styles.addText}>{!inStock ? 'Out of stock' : remaining === 0 ? 'Stock limit reached' : cannotAdd ? `Only ${remaining} more available` : 'Add to Cart'}</Text>
+            <Ionicons name={added ? 'checkmark' : 'cart-outline'} size={19} color="#FFFFFF" />
+            <Text accessibilityLiveRegion="polite" style={styles.addText}>{!inStock ? 'Out of stock' : remaining === 0 ? 'Stock limit reached' : cannotAdd ? `Only ${remaining} more available` : added ? 'Added to Cart' : 'Add to Cart'}</Text>
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Buy now" disabled={!inStock}
-            style={[styles.addButton, styles.buyButton, !inStock && styles.disabledButton]} onPress={() => buyNow(amount)}>
+            style={({ pressed }) => [styles.addButton, styles.buyButton, !inStock && styles.disabledButton, pressed && styles.pressed]} onPress={() => {
+              if (!inStock) return;
+              void purchaseFeedback('buy');
+              buyNow(amount);
+            }}>
             <Text style={styles.addText}>Buy Now</Text>
           </Pressable>
         </View>
@@ -134,7 +147,7 @@ const styles = StyleSheet.create({
   page: { flex: 1, alignItems: 'center', backgroundColor: '#F4F5F7' },
   app: { width: '100%', maxWidth: 560, flex: 1, backgroundColor: '#FFFFFF' },
   header: { paddingHorizontal: 20, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F3F4F5' },
-  back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: '#FFFFFF' },
+  back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F5' },
   scroll: { flex: 1 },
   content: { marginTop: -10, padding: 24, paddingBottom: 32, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: '#FFFFFF', gap: 14 },
   meta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
@@ -180,6 +193,7 @@ const styles = StyleSheet.create({
   addButton: { flex: 1, minHeight: 50, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 18, backgroundColor: '#20242B', flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center' },
   addText: { fontSize: 13, fontWeight: '600', color: '#FFFFFF', flexShrink: 1, textAlign: 'center' },
   buyButton: { backgroundColor: '#E86619' },
+  pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
   disabledButton: { backgroundColor: '#A4A9B1' },
   state: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 28, gap: 16 },
   stateTitle: { fontSize: 19, fontWeight: '600', color: '#20242B', textAlign: 'center' },

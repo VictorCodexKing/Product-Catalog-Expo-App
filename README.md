@@ -43,6 +43,8 @@ Search, filter, status/category selectors, scanner, Home, and Orders are disable
 
 ## Run
 
+The detail gallery uses a large, swipeable image area with round page indicators and a back button matching its background. Add to Cart and Buy Now trigger Expo haptic feedback on supported devices, with pressed-button feedback and a brief cart confirmation as visual cues. Haptics depend on device hardware/settings and browser vibration support; an unavailable haptic engine never blocks the action.
+
 Requires Node.js 22.13+ and npm. Run these commands from this directory:
 
 ```sh

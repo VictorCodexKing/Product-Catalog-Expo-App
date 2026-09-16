@@ -1,7 +1,7 @@
-import { fetchCategories, fetchFilteredProducts, fetchProduct, fetchProducts, PAGE_SIZE, ProductDetail, ProductsPage } from '../products';
+import { fetchCatalogFacets, fetchCategories, fetchFilteredProducts, fetchProduct, fetchProducts, PAGE_SIZE, ProductDetail, ProductsPage } from '../products';
 
 const page: ProductsPage = {
-  products: [{ id: 1, title: 'Perfume', thumbnail: 'https://example.com/1.png', price: 9.99, discountPercentage: 10, stock: 5, category: 'beauty' }],
+  products: [{ id: 1, title: 'Perfume', thumbnail: 'https://example.com/1.png', price: 9.99, discountPercentage: 10, stock: 5, category: 'beauty', brand: 'Essence' }],
   total: 1, skip: 0, limit: PAGE_SIZE,
 };
 
@@ -16,12 +16,18 @@ test('encodes search terms and preserves API pagination', async () => {
   expect(fetchMock).toHaveBeenCalledWith('https://dummyjson.com/products/search?limit=20&skip=20&q=phone%20%26%20case', { signal: undefined });
 });
 
-test('combines category and out-of-stock filters across the complete search result', async () => {
-  const matches = Array.from({ length: 25 }, (_, id) => ({ ...page.products[0], id: id + 1, stock: id === 24 ? 0 : 5 }));
+test('combines category, brand, and price filters across the complete search result', async () => {
+  const matches = Array.from({ length: 25 }, (_, id) => ({ ...page.products[0], id: id + 1, price: id === 24 ? 7 : 12 }));
   fetchMock.mockResolvedValue({ ok: true, json: async () => ({ products: matches, total: 25, skip: 0, limit: 25 }) });
-  await expect(fetchFilteredProducts({ query: 'perfume', category: 'beauty', stock: 'out' })).resolves.toEqual([matches[24]]);
+  await expect(fetchFilteredProducts({ query: 'perfume', category: 'beauty', brand: 'Essence', maxPrice: 8 })).resolves.toEqual([matches[24]]);
   expect(fetchMock.mock.calls[0][0]).toContain('/search?limit=0&skip=0&q=perfume');
-  await expect(fetchFilteredProducts({ query: 'perfume', category: 'groceries', stock: 'out' })).resolves.toEqual([]);
+  await expect(fetchFilteredProducts({ query: 'perfume', category: 'groceries', brand: 'Essence', maxPrice: 8 })).resolves.toEqual([]);
+});
+
+test('builds sorted category, brand, and price facets from the catalog', async () => {
+  const products = [page.products[0], { ...page.products[0], id: 2, category: 'fragrances', brand: 'Acme', price: 24.2 }];
+  fetchMock.mockResolvedValue({ ok: true, json: async () => ({ products, total: 2, skip: 0, limit: 0 }) });
+  await expect(fetchCatalogFacets()).resolves.toEqual({ categories: ['beauty', 'fragrances'], brands: ['Acme', 'Essence'], maxPrice: 25 });
 });
 
 test('loads categories independently and rejects malformed options', async () => {

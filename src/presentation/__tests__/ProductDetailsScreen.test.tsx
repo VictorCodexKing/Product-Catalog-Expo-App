@@ -37,6 +37,8 @@ beforeEach(() => jest.clearAllMocks());
 
 test('shows the complete description, pricing, specifications, and every review with star-only ratings', async () => {
   await renderDetails();
+  expect(screen.getByRole('button', { name: 'Add to cart' })).toHaveStyle({ backgroundColor: 'transparent' });
+  expect(screen.getByRole('button', { name: 'Buy now' })).toHaveStyle({ width: '70%', backgroundColor: '#FF5A00' });
   expect(useProductMock).toHaveBeenCalledWith(1);
   expect(screen.getByText(product.title)).toBeOnTheScreen();
   expect(screen.getByText(product.description).props.numberOfLines).toBeUndefined();
@@ -92,7 +94,6 @@ test('adds the selected quantity to the real cart and blocks repeated additions 
   expect(screen.getByRole('button', { name: 'Open cart, 3 items' })).toBeOnTheScreen();
   expect(screen.getByRole('button', { name: 'Add to cart' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Buy now' })).toBeEnabled();
-  expect(screen.getByText('Stock limit reached')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: 'Add to cart' }));
   expect(screen.getByRole('button', { name: 'Open cart, 3 items' })).toBeOnTheScreen();
 });

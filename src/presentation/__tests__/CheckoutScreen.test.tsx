@@ -11,10 +11,11 @@ const perfume = { id: 1, title: 'Perfume', price: 9.99, thumbnail: '', stock: 5,
 const soap = { ...perfume, id: 2, title: 'Soap', price: 1.25 };
 
 function Checkout({ direct = false, quantity = 2 }: { direct?: boolean; quantity?: number }) {
-  const { addItem, itemCount } = useCart();
+  const { addItem, itemCount, notifications } = useCart();
   useEffect(() => { addItem(perfume, quantity); }, [addItem, quantity]);
   return <>
     <Text>Cart count: {itemCount}</Text>
+    <Text>Notification count: {notifications.length}</Text>
     <CheckoutScreen navigation={navigation} route={{ key: 'checkout', name: 'Checkout', params: direct ? { buyNow: { product: soap, quantity: 3 } } : undefined }} />
   </>;
 }
@@ -27,7 +28,9 @@ test('reviews discounted cart totals and clears the cart only after demo confirm
   expect(screen.getByText('Cart count: 2')).toBeOnTheScreen();
   expect(screen.getByLabelText('Before discount: $11.10')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: 'Place demo order' }));
-  expect(screen.getByText('Demo order placed')).toBeOnTheScreen();
+  expect(screen.getByText('Order confirmed')).toBeOnTheScreen();
+  expect(screen.getByText('Notification count: 1')).toBeOnTheScreen();
+  expect(screen.getByText(/2 items purchased\. Estimated delivery/)).toBeOnTheScreen();
   expect(screen.getByText('Cart count: 0')).toBeOnTheScreen();
   expect(screen.queryByRole('button', { name: 'Place demo order' })).toBeNull();
 });
@@ -38,7 +41,9 @@ test('Buy Now reviews only the selected product and keeps the existing cart afte
   expect(screen.queryByText('Perfume')).toBeNull();
   expect(screen.getByText('$3.75')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: 'Place demo order' }));
-  expect(screen.getByText('Demo order placed')).toBeOnTheScreen();
+  expect(screen.getByText('Order confirmed')).toBeOnTheScreen();
+  expect(screen.getByText('Notification count: 1')).toBeOnTheScreen();
+  expect(screen.getByText(/3 items purchased\. Estimated delivery/)).toBeOnTheScreen();
   expect(screen.getByText('Cart count: 2')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: 'Continue shopping' }));
   expect(navigation.popTo).toHaveBeenCalledWith('Products');

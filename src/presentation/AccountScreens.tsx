@@ -3,6 +3,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import FooterTabs from './FooterTabs';
+import { useCart } from './CartContext';
 import { RootStackParamList } from './navigation';
 import ScreenShell from './ScreenShell';
 
@@ -24,12 +25,23 @@ export function MoreScreen({ navigation }: NativeStackScreenProps<RootStackParam
 }
 
 export function NotificationsScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Notifications'>) {
+  const { notifications } = useCart();
   return <ScreenShell title="Notifications" goBack={navigation.goBack}>
-    <View style={styles.empty}>
+    {!notifications.length ? <View style={styles.empty}>
       <View style={styles.avatar}><Ionicons name="notifications-outline" size={30} color="#E86619" /></View>
       <Text style={styles.heading}>All caught up</Text>
       <Text style={styles.muted}>You have no notifications yet.</Text>
-    </View>
+    </View> : <ScrollView contentContainerStyle={styles.notifications}>
+      <Text style={styles.muted}>Updates about your recent purchases.</Text>
+      {notifications.map(notification => <View key={notification.id} style={styles.notificationCard}>
+        <View style={styles.notificationIcon}><Ionicons name="checkmark-circle" size={24} color="#E86619" /></View>
+        <View style={styles.notificationText}>
+          <Text style={styles.notificationTitle}>{notification.title}</Text>
+          <Text style={styles.muted}>{notification.message}</Text>
+          <Text style={styles.time}>{new Date(notification.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</Text>
+        </View>
+      </View>)}
+    </ScrollView>}
   </ScreenShell>;
 }
 
@@ -45,4 +57,10 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
   value: { flexShrink: 1, fontSize: 13, color: '#252930' },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 16 },
+  notifications: { padding: 24, gap: 16 },
+  notificationCard: { flexDirection: 'row', gap: 13, padding: 17, borderWidth: 1, borderColor: '#ECEEF1', borderRadius: 18, backgroundColor: '#FFFFFF' },
+  notificationIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFF0E5', alignItems: 'center', justifyContent: 'center' },
+  notificationText: { flex: 1, gap: 5 },
+  notificationTitle: { fontSize: 15, fontWeight: '700', color: '#252930' },
+  time: { fontSize: 10, color: '#9A9FA7', marginTop: 3 },
 });

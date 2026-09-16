@@ -8,6 +8,7 @@ export type Product = {
   discountPercentage: number;
   stock: number;
   category: string;
+  brand?: string;
 };
 
 export type ProductDetail = Product & {
@@ -38,7 +39,8 @@ function isProduct(value: unknown): value is Product {
     Number.isFinite(product.price) && product.price >= 0 &&
     Number.isFinite(product.discountPercentage) && product.discountPercentage >= 0 && product.discountPercentage <= 100 &&
     Number.isInteger(product.stock) && product.stock >= 0 &&
-    typeof product.category === 'string';
+    typeof product.category === 'string' &&
+    (product.brand === undefined || typeof product.brand === 'string');
 }
 
 function isProductDetail(value: unknown): value is ProductDetail {
@@ -66,7 +68,9 @@ export async function fetchProduct(id: number, signal?: AbortSignal): Promise<Pr
   return product;
 }
 
-export type CatalogFilters = { query?: string; category?: string; stock?: 'all' | 'in' | 'out' };
+export type CatalogFilters = { query?: string; category?: string; brand?: string; maxPrice?: number | null };
+
+export type CatalogFacets = { categories: string[]; brands: string[]; maxPrice: number };
 
 export async function fetchCategories(signal?: AbortSignal): Promise<string[]> {
   const response = await fetch('https://dummyjson.com/products/category-list', { signal });
@@ -74,6 +78,15 @@ export async function fetchCategories(signal?: AbortSignal): Promise<string[]> {
   const categories: unknown = await response.json();
   if (!Array.isArray(categories) || !categories.every(value => typeof value === 'string')) throw new Error('Invalid categories.');
   return categories.sort();
+}
+
+export async function fetchCatalogFacets(signal?: AbortSignal): Promise<CatalogFacets> {
+  const { products } = await fetchProducts(0, signal, { limit: 0 });
+  return {
+    categories: [...new Set(products.map(product => product.category))].sort(),
+    brands: [...new Set(products.map(product => product.brand).filter((brand): brand is string => Boolean(brand)))].sort(),
+    maxPrice: Math.ceil(Math.max(0, ...products.map(product => product.price))),
+  };
 }
 
 export async function fetchProducts(skip = 0, signal?: AbortSignal, options: CatalogFilters & { limit?: number } = {}): Promise<ProductsPage> {
@@ -94,8 +107,9 @@ export async function fetchProducts(skip = 0, signal?: AbortSignal, options: Cat
 }
 
 export async function fetchFilteredProducts(filters: CatalogFilters, signal?: AbortSignal): Promise<Product[]> {
-  // DummyJSON cannot combine search, category and stock. Filter the complete result, not just a loaded page.
+  // DummyJSON cannot combine every facet, so filter the complete match set rather than one loaded page.
   const page = await fetchProducts(0, signal, { ...filters, limit: 0 });
   return page.products.filter(product => (!filters.category || product.category === filters.category) &&
-    (filters.stock === 'in' ? product.stock > 0 : filters.stock === 'out' ? product.stock === 0 : true));
+    (!filters.brand || product.brand === filters.brand) &&
+    (filters.maxPrice == null || product.price <= filters.maxPrice));
 }

@@ -35,7 +35,7 @@ test('resets search pagination and ignores late results from the previous query'
 
 test('paginates combined-filter matches without refetching the complete dataset', async () => {
   const filteredMock = jest.mocked(fetchFilteredProducts).mockResolvedValue(pageAt(0, 45).products);
-  const { result } = await renderHook(() => useProducts({ stock: 'in' }));
+  const { result } = await renderHook(() => useProducts({ brand: 'Essence' }));
   expect(result.current.products).toHaveLength(20);
   await act(() => result.current.loadMore());
   expect(result.current.products).toHaveLength(40);

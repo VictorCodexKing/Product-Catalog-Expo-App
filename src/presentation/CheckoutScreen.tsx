@@ -14,12 +14,13 @@ export default function CheckoutScreen({ navigation, route }: NativeStackScreenP
   const directItem = route.params?.buyNow;
   const items = directItem ? [directItem] : cart.items;
   const [completed, setCompleted] = useState(false);
+  const [deliveryMessage, setDeliveryMessage] = useState('');
   const total = items.reduce((cents, item) => cents + Math.round(item.product.price * 100) * item.quantity, 0) / 100;
   return <ScreenShell title="Checkout" goBack={navigation.goBack}>
     {completed || !items.length ? <View style={styles.empty}>
       <Ionicons name={completed ? 'checkmark-circle-outline' : 'cart-outline'} size={54} color="#E86619" />
-      <Text style={styles.heading}>{completed ? 'Demo order placed' : 'Your cart is empty'}</Text>
-      <Text style={styles.muted}>{completed ? 'No payment was taken. This was a local checkout preview.' : 'Add a product to start checkout.'}</Text>
+      <Text style={styles.heading}>{completed ? 'Order confirmed' : 'Your cart is empty'}</Text>
+      <Text style={styles.muted}>{completed ? deliveryMessage : 'Add a product to start checkout.'}</Text>
       <Pressable accessibilityRole="button" style={styles.button} onPress={() => navigation.popTo('Products')}><Text style={styles.buttonText}>Continue shopping</Text></Pressable>
     </View> : <>
       <ScrollView contentContainerStyle={styles.content}>
@@ -35,6 +36,8 @@ export default function CheckoutScreen({ navigation, route }: NativeStackScreenP
         <Pressable accessibilityRole="button" style={styles.button} onPress={() => {
           if (completed) return;
           // Buy Now checks out this selection without changing the existing cart.
+          const notification = cart.recordPurchase(items);
+          setDeliveryMessage(notification?.message ?? 'Your purchase is confirmed.');
           setCompleted(true);
           if (!directItem) items.forEach(item => cart.setQuantity(item.product.id, 0));
         }}><Text style={styles.buttonText}>Place demo order</Text></Pressable>

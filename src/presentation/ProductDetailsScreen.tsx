@@ -45,6 +45,16 @@ function DetailContent({ product, buyNow }: { product: ProductDetail; buyNow: (q
           <Text accessibilityRole="header" style={styles.title}>{product.title}</Text>
           <ProductPrice product={product} />
           <View style={styles.ratingRow}><Stars rating={product.rating} /><Text style={styles.muted}>{product.reviews.length} {product.reviews.length === 1 ? 'review' : 'reviews'}</Text></View>
+          <View style={styles.quantityCard}>
+            <View><Text style={styles.quantityLabel}>Quantity</Text><Text accessibilityLabel={`Selected quantity total: $${selectionTotal}`} style={styles.quantityTotal}>${selectionTotal} total</Text></View>
+            <View style={styles.stepper}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Decrease quantity" disabled={amount <= 1}
+                style={styles.step} onPress={() => setQuantity(amount - 1)}><Ionicons name="remove" size={18} color={amount <= 1 ? '#BCC0C6' : '#20242B'} /></Pressable>
+              <Text accessibilityLabel={`Quantity ${amount}`} style={styles.quantity}>{amount}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Increase quantity" disabled={amount >= product.stock}
+                style={styles.step} onPress={() => setQuantity(amount + 1)}><Ionicons name="add" size={18} color={amount >= product.stock ? '#BCC0C6' : '#20242B'} /></Pressable>
+            </View>
+          </View>
 
           <View style={styles.section}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>Description</Text>
@@ -84,30 +94,20 @@ function DetailContent({ product, buyNow }: { product: ProductDetail; buyNow: (q
         </View>
       </ScrollView>
       <View style={styles.purchase}>
-        <View style={styles.purchaseRow}>
-          <Text accessibilityLabel={`Selected quantity total: $${selectionTotal}`} style={styles.purchasePrice}>${selectionTotal}</Text>
-          <View style={styles.stepper}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Decrease quantity" disabled={amount <= 1}
-              style={styles.step} onPress={() => setQuantity(amount - 1)}><Ionicons name="remove" size={18} color={amount <= 1 ? '#BCC0C6' : '#20242B'} /></Pressable>
-            <Text accessibilityLabel={`Quantity ${amount}`} style={styles.quantity}>{amount}</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Increase quantity" disabled={amount >= product.stock}
-              style={styles.step} onPress={() => setQuantity(amount + 1)}><Ionicons name="add" size={18} color={amount >= product.stock ? '#BCC0C6' : '#20242B'} /></Pressable>
-          </View>
-        </View>
+        {added > 0 && <View style={styles.toast} accessibilityLiveRegion="polite"><Ionicons name="checkmark-circle" size={17} color="#167A3D" /><Text style={styles.toastText}>Added to Cart</Text></View>}
         <View style={styles.purchaseRow}>
           <Pressable accessibilityRole="button" accessibilityLabel="Add to cart" disabled={cannotAdd}
-            style={({ pressed }) => [styles.addButton, cannotAdd && styles.disabledButton, pressed && styles.pressed]} onPress={() => {
+            style={({ pressed }) => [styles.addButton, cannotAdd && styles.disabledOutline, pressed && styles.pressed]} onPress={() => {
               if (cannotAdd) return;
               addItem(product, amount);
               setAdded(previous => previous + 1);
               void purchaseFeedback('cart');
               setQuantity(1);
             }}>
-            <Ionicons name={added ? 'checkmark' : 'cart-outline'} size={19} color="#FFFFFF" />
-            <Text accessibilityLiveRegion="polite" style={styles.addText}>{!inStock ? 'Out of stock' : remaining === 0 ? 'Stock limit reached' : cannotAdd ? `Only ${remaining} more available` : added ? 'Added to Cart' : 'Add to Cart'}</Text>
+            <Ionicons name={added ? 'checkmark' : 'cart-outline'} size={23} color={cannotAdd ? '#A4A9B1' : '#252930'} />
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Buy now" disabled={!inStock}
-            style={({ pressed }) => [styles.addButton, styles.buyButton, !inStock && styles.disabledButton, pressed && styles.pressed]} onPress={() => {
+            style={({ pressed }) => [styles.buyButton, !inStock && styles.disabledButton, pressed && styles.pressed]} onPress={() => {
               if (!inStock) return;
               void purchaseFeedback('buy');
               buyNow(amount);
@@ -160,6 +160,9 @@ const styles = StyleSheet.create({
   category: { color: '#92969D', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', flexShrink: 1 },
   title: { color: '#20242B', fontSize: 26, lineHeight: 33, fontWeight: '700', letterSpacing: -0.7 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  quantityCard: { marginTop: 4, padding: 14, borderRadius: 16, backgroundColor: '#F7F8F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  quantityLabel: { fontSize: 13, fontWeight: '700', color: '#252930' },
+  quantityTotal: { marginTop: 4, fontSize: 11, color: '#858B94' },
   muted: { fontSize: 12, color: '#858B94' },
   section: { marginTop: 10, gap: 13 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#252A32' },
@@ -184,17 +187,19 @@ const styles = StyleSheet.create({
   reviewerName: { fontSize: 12, fontWeight: '600', color: '#343A43' },
   reviewDate: { fontSize: 10, color: '#959AA2' },
   reviewComment: { color: '#717984', fontSize: 13, lineHeight: 20 },
-  purchase: { borderTopWidth: 1, borderColor: '#ECEEF0', paddingHorizontal: 24, paddingBottom: 14, paddingTop: 10, gap: 9, backgroundColor: '#FFFFFF' },
-  purchasePrice: { fontSize: 27, fontWeight: '700', letterSpacing: -0.7, color: '#20242B', flexShrink: 1 },
+  purchase: { borderTopWidth: 1, borderColor: '#ECEEF0', paddingHorizontal: 24, paddingBottom: 14, paddingTop: 12, gap: 9, backgroundColor: '#FFFFFF' },
   purchaseRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   stepper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E4E6E9', borderRadius: 25 },
   step: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   quantity: { minWidth: 26, fontSize: 14, fontWeight: '600', color: '#20242B', textAlign: 'center' },
-  addButton: { flex: 1, minHeight: 50, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 18, backgroundColor: '#20242B', flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center' },
+  addButton: { flex: 1, minHeight: 54, borderRadius: 18, borderWidth: 1.5, borderColor: '#252930', backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
   addText: { fontSize: 13, fontWeight: '600', color: '#FFFFFF', flexShrink: 1, textAlign: 'center' },
-  buyButton: { backgroundColor: '#E86619' },
+  buyButton: { width: '70%', minHeight: 54, paddingHorizontal: 20, borderRadius: 18, backgroundColor: '#FF5A00', justifyContent: 'center', alignItems: 'center' },
+  toast: { position: 'absolute', right: 24, top: -39, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 13, paddingVertical: 8, borderRadius: 18, backgroundColor: '#E8F7ED', borderWidth: 1, borderColor: '#C7EAD2' },
+  toastText: { fontSize: 11, fontWeight: '700', color: '#167A3D' },
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
   disabledButton: { backgroundColor: '#A4A9B1' },
+  disabledOutline: { borderColor: '#D7DADF' },
   state: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 28, gap: 16 },
   stateTitle: { fontSize: 19, fontWeight: '600', color: '#20242B', textAlign: 'center' },
   stateDescription: { fontSize: 13, lineHeight: 20, color: '#858B94', textAlign: 'center' },

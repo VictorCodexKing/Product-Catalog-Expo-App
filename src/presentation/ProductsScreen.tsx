@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CatalogFilters, Product } from '../data/products';
 import { useProducts } from './useProducts';
 import { CartButton, DiscountBadge } from './ProductBits';
+import { useCart } from './CartContext';
 import { RootStackParamList } from './navigation';
 import FooterTabs from './FooterTabs';
 import CatalogControls from './CatalogControls';
@@ -59,14 +60,21 @@ function CatalogState({ status, retry, filtered, clear }: { status: 'loading' | 
 
 export default function ProductsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { notifications = [] } = useCart();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
-  const [stock, setStock] = useState<NonNullable<CatalogFilters['stock']>>('all');
+  const [brand, setBrand] = useState('');
+  const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const debouncedQuery = useDebouncedValue(query.trim());
   const waiting = query.trim() !== debouncedQuery;
-  const filtered = Boolean(query.trim() || category || stock !== 'all');
-  const clear = () => { setQuery(''); setCategory(''); setStock('all'); };
-  const { products, total, status: resultStatus, retry, loadMore, loadingMore, pageError, retryMore, hasMore } = useProducts({ query: debouncedQuery, category, stock });
+  const filtered = Boolean(query.trim() || category || brand || maxPrice != null);
+  const clear = () => { setQuery(''); setCategory(''); setBrand(''); setMaxPrice(null); };
+  const applyFilters = (filters: Pick<CatalogFilters, 'category' | 'brand' | 'maxPrice'>) => {
+    setCategory(filters.category ?? '');
+    setBrand(filters.brand ?? '');
+    setMaxPrice(filters.maxPrice ?? null);
+  };
+  const { products, total, status: resultStatus, retry, loadMore, loadingMore, pageError, retryMore, hasMore } = useProducts({ query: debouncedQuery, category, brand, maxPrice });
   const status = waiting ? 'loading' : resultStatus;
   return (
     <SafeAreaView style={styles.page}>
@@ -76,17 +84,19 @@ export default function ProductsScreen() {
           <View style={styles.headerActions}>
             <CartButton onPress={() => navigation.navigate('Cart')} />
             <Pressable accessibilityRole="button" accessibilityLabel="Open notifications" style={styles.notification}
-              onPress={() => navigation.navigate('Notifications')}><Ionicons name="notifications-outline" size={23} color="#20242B" /></Pressable>
+              onPress={() => navigation.navigate('Notifications')}><Ionicons name="notifications-outline" size={23} color="#20242B" />
+              {notifications.length > 0 && <View style={styles.notificationDot} />}
+            </Pressable>
           </View>
         </View>
-        <CatalogControls query={query} onQuery={setQuery} category={category} onCategory={setCategory} stock={stock} onStock={setStock} />
+        <CatalogControls query={query} onQuery={setQuery} category={category} brand={brand} maxPrice={maxPrice} onApply={applyFilters} />
         <View style={styles.listHeading} accessibilityLiveRegion="polite">
           <Text style={styles.sectionLabel}>{filtered ? 'RESULTS' : 'ALL PRODUCTS'}</Text>
           {filtered && <Pressable accessibilityRole="button" accessibilityLabel="Reset filters" onPress={clear} style={styles.reset}><Text style={styles.resetText}>Reset</Text></Pressable>}
           {status === 'success' && <Text style={styles.count}>{products.length} of {total}</Text>}
         </View>
         {status !== 'success' ? <CatalogState status={status} retry={retry} filtered={filtered} clear={clear} /> : (
-          <FlatList key={JSON.stringify([debouncedQuery, category, stock])} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" data={products} keyExtractor={item => String(item.id)}
+          <FlatList key={JSON.stringify([debouncedQuery, category, brand, maxPrice])} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" data={products} keyExtractor={item => String(item.id)}
             renderItem={({ item }) => <ProductRow product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />}
             onEndReached={loadMore} onEndReachedThreshold={0.4}
             contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
@@ -116,6 +126,7 @@ const styles = StyleSheet.create({
   eyebrow: { fontSize: 9, fontWeight: '700', letterSpacing: 1.6, color: '#8B7B6F', marginBottom: 7 },
   heading: { fontSize: 33, fontWeight: '700', letterSpacing: -1.1, color: '#20242B' },
   notification: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#EAEBEE' },
+  notificationDot: { position: 'absolute', right: 8, top: 7, width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF5A00', borderWidth: 1.5, borderColor: '#FFFFFF' },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   reset: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center', marginVertical: -12 },
   resetText: { color: '#B94C12', fontSize: 12, fontWeight: '600' },

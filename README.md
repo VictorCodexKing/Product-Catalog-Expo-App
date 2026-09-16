@@ -35,19 +35,18 @@ Home and Orders remain disabled placeholders for later features.
 
 ## Feature 4 — purchase controls and cart refinements
 
-- Fixed detail footer with selected-quantity total, quantity controls, Add to Cart, and Buy Now.
+- Clean detail layout with quantity controls in the content and a fixed action bar: an icon-only outlined cart action and a 70%-wide vibrant orange Buy Now button.
 - Larger cart thumbnails, selling and original prices, quantity controls on the right, and swipe-left to reveal Delete. The ellipsis button offers the same action without a swipe.
 - Checkout reviews the entire cart; Buy Now reviews only the selected product and quantity, leaving the existing cart intact.
-- Checkout is a local demo: no payment, delivery, or server order is created. Confirming a cart checkout clears that cart; confirming Buy Now preserves it.
-- Shopping cart and notification icons in the catalog header. More contains the local preview account information; notifications show an empty state.
+- Checkout is a local demo: no payment, delivery, or server order is created. Confirming a cart checkout clears that cart; confirming Buy Now preserves it and creates an in-app purchase notification with an estimated delivery date.
+- Shopping cart and notification icons remain in the catalog header. More contains the local preview account information; completed demo purchases appear in Notifications.
 
 ## Feature 5 — search and filters
 
 - Search uses `/products/search?q=…` after 350 ms of inactivity, so it covers products beyond the pages already loaded.
-- Category options come from `/products/category-list`; category-only browsing uses the category endpoint. Normal browsing/search keep 20-item API pages.
-- DummyJSON cannot combine search, category, and stock. For these combinations, fetch the complete matching set with `limit=0`, apply the remaining filters locally, and display it in 20-item pages. This prevents false empty results from filtering only a loaded page. The complete result is reused until filters change; this approach suits the small demo catalog, while a larger production catalog should filter on its backend.
-- Status means In stock (stock > 0) or Out of stock (stock = 0). Changing criteria resets pagination and cancels stale requests.
-- Search clear, reset-all, selected dropdown options, category retry, and a dedicated no-matches state. Removed the filter and camera buttons.
+- A single filter button beside search opens a bottom sheet with Category, Brand, and a maximum-price slider. Status and always-visible Category controls were removed.
+- Normal browsing/search keep 20-item API pages. DummyJSON cannot combine every filter, so combined filters use the complete matching set with `limit=0`, apply the remaining facets locally, and display 20-item pages from that result.
+- Applied-filter count, clear/apply actions, selected chips, loading/retry feedback, reset-all, and a dedicated no-matches state keep the flow understandable.
 
 ## Run
 

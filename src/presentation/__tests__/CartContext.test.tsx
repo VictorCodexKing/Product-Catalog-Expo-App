@@ -77,3 +77,11 @@ test('retains the cart when screen consumers unmount and remount inside the prov
   await rerender(<CartProvider><Cart /></CartProvider>);
   expect(screen.getByText('4 items in cart')).toBeOnTheScreen();
 });
+
+test('records a purchase notification with the item count and delivery estimate', async () => {
+  const { result } = await renderHook(useCart, { wrapper: CartProvider });
+  await act(() => result.current.recordPurchase([{ product, quantity: 2 }]));
+  expect(result.current.notifications).toHaveLength(1);
+  expect(result.current.notifications[0]).toMatchObject({ title: 'Purchase confirmed' });
+  expect(result.current.notifications[0].message).toMatch(/^2 items purchased\. Estimated delivery .+\.$/);
+});

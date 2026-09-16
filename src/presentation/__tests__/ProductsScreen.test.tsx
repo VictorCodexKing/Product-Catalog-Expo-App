@@ -1,9 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import ProductsScreen from '../ProductsScreen';
 import { useProducts } from '../useProducts';
 
 jest.mock('../useProducts');
+jest.mock('../../data/products', () => ({ ...jest.requireActual('../../data/products'), fetchCategories: jest.fn().mockResolvedValue(['beauty', 'groceries']) }));
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 const mockNavigate = jest.fn();
 jest.mock('@react-navigation/native', () => ({ useNavigation: () => ({ navigate: mockNavigate }) }));
@@ -25,6 +26,30 @@ const products = [
 beforeEach(() => {
   jest.clearAllMocks();
   useProductsMock.mockReturnValue(initialState);
+});
+
+test('debounces typing and combines dropdown selections, then resets all filters', async () => {
+  jest.useFakeTimers();
+  try {
+    await render(<ProductsScreen />);
+    await fireEvent.changeText(screen.getByLabelText('Search products'), 'ph');
+    await act(() => jest.advanceTimersByTime(200));
+    await fireEvent.changeText(screen.getByLabelText('Search products'), 'phone');
+    await act(() => jest.advanceTimersByTime(349));
+    expect(useProductsMock).toHaveBeenLastCalledWith({ query: '', category: '', stock: 'all' });
+    await act(() => jest.advanceTimersByTime(1));
+    expect(useProductsMock).toHaveBeenLastCalledWith({ query: 'phone', category: '', stock: 'all' });
+    await fireEvent.press(screen.getByRole('combobox', { name: 'Status, All statuses' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Out of stock' }));
+    await fireEvent.press(screen.getByRole('combobox', { name: 'Category, All categories' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Beauty' }));
+    expect(useProductsMock).toHaveBeenLastCalledWith({ query: 'phone', category: 'beauty', stock: 'out' });
+    await fireEvent.press(screen.getByRole('button', { name: 'Reset filters' }));
+    await act(() => jest.advanceTimersByTime(350));
+    expect(useProductsMock).toHaveBeenLastCalledWith({ query: '', category: '', stock: 'all' });
+    expect(screen.queryByLabelText('Camera scanner, coming soon')).toBeNull();
+    expect(screen.queryByLabelText('Filter products, coming soon')).toBeNull();
+  } finally { jest.useRealTimers(); }
 });
 
 test('shows each product title, thumbnail, formatted price, and stock status', async () => {

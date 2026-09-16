@@ -1,9 +1,9 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 
-import { fetchProducts, PAGE_SIZE, ProductsPage } from '../../data/products';
+import { fetchFilteredProducts, fetchProducts, PAGE_SIZE, ProductsPage } from '../../data/products';
 import { useProducts } from '../useProducts';
 
-jest.mock('../../data/products', () => ({ ...jest.requireActual('../../data/products'), fetchProducts: jest.fn() }));
+jest.mock('../../data/products', () => ({ ...jest.requireActual('../../data/products'), fetchProducts: jest.fn(), fetchFilteredProducts: jest.fn() }));
 const fetchMock = jest.mocked(fetchProducts);
 const page: ProductsPage = {
   products: [{ id: 1, title: 'Perfume', thumbnail: 'https://example.com/1.png', price: 9.99, discountPercentage: 10, stock: 5, category: 'beauty' }],
@@ -20,6 +20,31 @@ function deferredPage() {
 }
 
 beforeEach(() => fetchMock.mockReset());
+
+test('resets search pagination and ignores late results from the previous query', async () => {
+  const old = deferredPage();
+  fetchMock.mockReturnValueOnce(old.promise).mockResolvedValueOnce(page);
+  const { result, rerender } = await renderHook(({ query }: { query: string }) => useProducts({ query }), { initialProps: { query: 'old' } });
+  const signal = fetchMock.mock.calls[0][1];
+  await rerender({ query: 'new' });
+  expect(signal?.aborted).toBe(true);
+  await act(() => old.resolve(pageAt(0, 20)));
+  expect(result.current.products).toEqual(page.products);
+  expect(fetchMock.mock.calls.map(call => [call[0], call[2]?.query])).toEqual([[0, 'old'], [0, 'new']]);
+});
+
+test('paginates combined-filter matches without refetching the complete dataset', async () => {
+  const filteredMock = jest.mocked(fetchFilteredProducts).mockResolvedValue(pageAt(0, 45).products);
+  const { result } = await renderHook(() => useProducts({ stock: 'in' }));
+  expect(result.current.products).toHaveLength(20);
+  await act(() => result.current.loadMore());
+  expect(result.current.products).toHaveLength(40);
+  await act(() => result.current.loadMore());
+  expect(result.current.products).toHaveLength(45);
+  expect(result.current.hasMore).toBe(false);
+  expect(filteredMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock).not.toHaveBeenCalled();
+});
 
 test('starts loading, then exposes product data on success', async () => {
   let resolve!: (value: ProductsPage) => void;

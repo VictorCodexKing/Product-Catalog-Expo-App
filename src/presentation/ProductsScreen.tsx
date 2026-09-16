@@ -2,30 +2,19 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Image } from 'expo-image';
-import { ComponentProps, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Product } from '../data/products';
+import { CatalogFilters, Product } from '../data/products';
 import { useProducts } from './useProducts';
 import { CartButton, DiscountBadge } from './ProductBits';
 import { RootStackParamList } from './navigation';
 import FooterTabs from './FooterTabs';
+import CatalogControls from './CatalogControls';
+import { useDebouncedValue } from './useDebouncedValue';
 
-type IconName = ComponentProps<typeof Ionicons>['name'];
 const accent = '#E86619';
-
-// These controls reserve the reference layout for later catalog features.
-function UpcomingControl({ label, icon, search = false }: { label: string; icon: IconName; search?: boolean }) {
-  return (
-    <Pressable disabled accessibilityRole="button" accessibilityLabel={`${label}, coming soon`}
-      accessibilityState={{ disabled: true }} style={[styles.control, search && styles.search]}>
-      {search && <Ionicons name="search-outline" size={19} color="#8C9199" />}
-      {(search || label === 'Status' || label === 'Category') && <Text style={styles.controlText}>{label}</Text>}
-      {!search && <Ionicons name={icon} size={label === 'Status' || label === 'Category' ? 15 : 21} color="#787F89" />}
-    </Pressable>
-  );
-}
 
 export function ProductRow({ product, onPress }: { product: Product; onPress: () => void }) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -55,22 +44,30 @@ export function ProductRow({ product, onPress }: { product: Product; onPress: ()
   );
 }
 
-function CatalogState({ status, retry }: { status: 'loading' | 'error' | 'empty'; retry: () => void }) {
+function CatalogState({ status, retry, filtered, clear }: { status: 'loading' | 'error' | 'empty'; retry: () => void; filtered: boolean; clear: () => void }) {
   return (
     <View style={styles.state} accessibilityLiveRegion="polite">
       {status === 'loading' ? <ActivityIndicator accessible accessibilityRole="progressbar" size="large" color={accent} accessibilityLabel="Loading products" /> : (
         <View style={styles.stateIcon}><Ionicons name={status === 'error' ? 'cloud-offline-outline' : 'cube-outline'} size={30} color={accent} /></View>
       )}
-      <Text style={styles.stateTitle}>{status === 'loading' ? 'Loading products' : status === 'error' ? 'Couldn’t load products' : 'No products yet'}</Text>
-      <Text style={styles.stateDescription}>{status === 'loading' ? 'Your catalog is on its way.' : status === 'error' ? 'Check your connection and try again.' : 'Check back soon for new arrivals.'}</Text>
-      {status !== 'loading' && <Pressable accessibilityRole="button" onPress={retry} style={styles.retry}><Text style={styles.retryText}>Try again</Text></Pressable>}
+      <Text style={styles.stateTitle}>{status === 'loading' ? 'Loading products' : status === 'error' ? 'Couldn’t load products' : filtered ? 'No matching products' : 'No products yet'}</Text>
+      <Text style={styles.stateDescription}>{status === 'loading' ? 'Your catalog is on its way.' : status === 'error' ? 'Check your connection and try again.' : filtered ? 'Try another search or clear your filters.' : 'Check back soon for new arrivals.'}</Text>
+      {status !== 'loading' && <Pressable accessibilityRole="button" onPress={status === 'empty' && filtered ? clear : retry} style={styles.retry}><Text style={styles.retryText}>{status === 'empty' && filtered ? 'Clear all filters' : 'Try again'}</Text></Pressable>}
     </View>
   );
 }
 
 export default function ProductsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { products, total, status, retry, loadMore, loadingMore, pageError, retryMore, hasMore } = useProducts();
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('');
+  const [stock, setStock] = useState<NonNullable<CatalogFilters['stock']>>('all');
+  const debouncedQuery = useDebouncedValue(query.trim());
+  const waiting = query.trim() !== debouncedQuery;
+  const filtered = Boolean(query.trim() || category || stock !== 'all');
+  const clear = () => { setQuery(''); setCategory(''); setStock('all'); };
+  const { products, total, status: resultStatus, retry, loadMore, loadingMore, pageError, retryMore, hasMore } = useProducts({ query: debouncedQuery, category, stock });
+  const status = waiting ? 'loading' : resultStatus;
   return (
     <SafeAreaView style={styles.page}>
       <View style={styles.app}>
@@ -82,23 +79,14 @@ export default function ProductsScreen() {
               onPress={() => navigation.navigate('Notifications')}><Ionicons name="notifications-outline" size={23} color="#20242B" /></Pressable>
           </View>
         </View>
-        <View style={styles.toolbar}>
-          <View style={styles.controls}>
-            <UpcomingControl label="Search products" icon="search-outline" search />
-            <UpcomingControl label="Filter products" icon="options-outline" />
-            <UpcomingControl label="Camera scanner" icon="scan-outline" />
-          </View>
-          <View style={styles.controls}>
-            <UpcomingControl label="Status" icon="chevron-down" />
-            <UpcomingControl label="Category" icon="chevron-down" />
-          </View>
-        </View>
-        <View style={styles.listHeading}>
-          <Text style={styles.sectionLabel}>ALL PRODUCTS</Text>
+        <CatalogControls query={query} onQuery={setQuery} category={category} onCategory={setCategory} stock={stock} onStock={setStock} />
+        <View style={styles.listHeading} accessibilityLiveRegion="polite">
+          <Text style={styles.sectionLabel}>{filtered ? 'RESULTS' : 'ALL PRODUCTS'}</Text>
+          {filtered && <Pressable accessibilityRole="button" accessibilityLabel="Reset filters" onPress={clear} style={styles.reset}><Text style={styles.resetText}>Reset</Text></Pressable>}
           {status === 'success' && <Text style={styles.count}>{products.length} of {total}</Text>}
         </View>
-        {status !== 'success' ? <CatalogState status={status} retry={retry} /> : (
-          <FlatList data={products} keyExtractor={item => String(item.id)}
+        {status !== 'success' ? <CatalogState status={status} retry={retry} filtered={filtered} clear={clear} /> : (
+          <FlatList key={JSON.stringify([debouncedQuery, category, stock])} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" data={products} keyExtractor={item => String(item.id)}
             renderItem={({ item }) => <ProductRow product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />}
             onEndReached={loadMore} onEndReachedThreshold={0.4}
             contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
@@ -129,11 +117,8 @@ const styles = StyleSheet.create({
   heading: { fontSize: 33, fontWeight: '700', letterSpacing: -1.1, color: '#20242B' },
   notification: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#EAEBEE' },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  toolbar: { paddingHorizontal: 24, gap: 12, paddingBottom: 21 },
-  controls: { flexDirection: 'row', gap: 10 },
-  control: { minWidth: 44, minHeight: 44, paddingHorizontal: 11, borderWidth: 1, borderColor: '#E9EAED', borderRadius: 11, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FDFDFD' },
-  search: { flex: 1, justifyContent: 'flex-start' },
-  controlText: { color: '#858B94', fontSize: 13 },
+  reset: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center', marginVertical: -12 },
+  resetText: { color: '#B94C12', fontSize: 12, fontWeight: '600' },
   listHeading: { paddingHorizontal: 24, paddingVertical: 13, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#F0F1F3', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FCFCFD' },
   sectionLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: '#858B94' },
   count: { fontSize: 11, color: '#858B94' },

@@ -13,7 +13,7 @@ Expo SDK 57 (managed), React Native 0.86, React 19, TypeScript, React Navigation
 - Distinct loading, error with retry, empty, and success views; image fallback on failure.
 - Footer order: Home, Products, Orders, More.
 
-Search, filter, status/category selectors, scanner, Home, and Orders are disabled placeholders for later features.
+Home and Orders remain disabled placeholders for later features.
 
 ## Feature 2 — automatic pagination
 
@@ -40,6 +40,14 @@ Search, filter, status/category selectors, scanner, Home, and Orders are disable
 - Checkout reviews the entire cart; Buy Now reviews only the selected product and quantity, leaving the existing cart intact.
 - Checkout is a local demo: no payment, delivery, or server order is created. Confirming a cart checkout clears that cart; confirming Buy Now preserves it.
 - Shopping cart and notification icons in the catalog header. More contains the local preview account information; notifications show an empty state.
+
+## Feature 5 — search and filters
+
+- Search uses `/products/search?q=…` after 350 ms of inactivity, so it covers products beyond the pages already loaded.
+- Category options come from `/products/category-list`; category-only browsing uses the category endpoint. Normal browsing/search keep 20-item API pages.
+- DummyJSON cannot combine search, category, and stock. For these combinations, fetch the complete matching set with `limit=0`, apply the remaining filters locally, and display it in 20-item pages. This prevents false empty results from filtering only a loaded page. The complete result is reused until filters change; this approach suits the small demo catalog, while a larger production catalog should filter on its backend.
+- Status means In stock (stock > 0) or Out of stock (stock = 0). Changing criteria resets pagination and cancels stale requests.
+- Search clear, reset-all, selected dropdown options, category retry, and a dedicated no-matches state. Removed the filter and camera buttons.
 
 ## Run
 

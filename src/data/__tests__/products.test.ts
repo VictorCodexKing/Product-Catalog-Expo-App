@@ -1,4 +1,4 @@
-import { fetchProduct, fetchProducts, PAGE_SIZE, ProductDetail, ProductsPage } from '../products';
+import { fetchCategories, fetchFilteredProducts, fetchProduct, fetchProducts, PAGE_SIZE, ProductDetail, ProductsPage } from '../products';
 
 const page: ProductsPage = {
   products: [{ id: 1, title: 'Perfume', thumbnail: 'https://example.com/1.png', price: 9.99, discountPercentage: 10, stock: 5, category: 'beauty' }],
@@ -9,6 +9,27 @@ const fetchMock = jest.fn();
 const originalFetch = global.fetch;
 beforeEach(() => { global.fetch = fetchMock; fetchMock.mockReset(); });
 afterAll(() => { global.fetch = originalFetch; });
+
+test('encodes search terms and preserves API pagination', async () => {
+  fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ...page, skip: 20 }) });
+  await fetchProducts(20, undefined, { query: 'phone & case' });
+  expect(fetchMock).toHaveBeenCalledWith('https://dummyjson.com/products/search?limit=20&skip=20&q=phone%20%26%20case', { signal: undefined });
+});
+
+test('combines category and out-of-stock filters across the complete search result', async () => {
+  const matches = Array.from({ length: 25 }, (_, id) => ({ ...page.products[0], id: id + 1, stock: id === 24 ? 0 : 5 }));
+  fetchMock.mockResolvedValue({ ok: true, json: async () => ({ products: matches, total: 25, skip: 0, limit: 25 }) });
+  await expect(fetchFilteredProducts({ query: 'perfume', category: 'beauty', stock: 'out' })).resolves.toEqual([matches[24]]);
+  expect(fetchMock.mock.calls[0][0]).toContain('/search?limit=0&skip=0&q=perfume');
+  await expect(fetchFilteredProducts({ query: 'perfume', category: 'groceries', stock: 'out' })).resolves.toEqual([]);
+});
+
+test('loads categories independently and rejects malformed options', async () => {
+  fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ['beauty', 'fragrances'] });
+  await expect(fetchCategories()).resolves.toEqual(['beauty', 'fragrances']);
+  fetchMock.mockResolvedValueOnce({ ok: true, json: async () => [42] });
+  await expect(fetchCategories()).rejects.toThrow('Invalid categories');
+});
 
 test('requests 20 products with the supplied offset and abort signal', async () => {
   fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ...page, skip: 20 }) });

@@ -66,8 +66,20 @@ export async function fetchProduct(id: number, signal?: AbortSignal): Promise<Pr
   return product;
 }
 
-export async function fetchProducts(skip = 0, signal?: AbortSignal): Promise<ProductsPage> {
-  const response = await fetch(`https://dummyjson.com/products?limit=${PAGE_SIZE}&skip=${skip}`, { signal });
+export type CatalogFilters = { query?: string; category?: string; stock?: 'all' | 'in' | 'out' };
+
+export async function fetchCategories(signal?: AbortSignal): Promise<string[]> {
+  const response = await fetch('https://dummyjson.com/products/category-list', { signal });
+  if (!response.ok) throw new Error('Could not load categories.');
+  const categories: unknown = await response.json();
+  if (!Array.isArray(categories) || !categories.every(value => typeof value === 'string')) throw new Error('Invalid categories.');
+  return categories.sort();
+}
+
+export async function fetchProducts(skip = 0, signal?: AbortSignal, options: CatalogFilters & { limit?: number } = {}): Promise<ProductsPage> {
+  const { query = '', category = '', limit = PAGE_SIZE } = options;
+  const path = query ? '/search' : category ? `/category/${encodeURIComponent(category)}` : '';
+  const response = await fetch(`https://dummyjson.com/products${path}?limit=${limit}&skip=${skip}${query ? `&q=${encodeURIComponent(query)}` : ''}`, { signal });
   if (!response.ok) throw new Error(`Products unavailable (${response.status}). Please try again.`);
 
   const page: ProductsPage = await response.json();
@@ -79,4 +91,11 @@ export async function fetchProducts(skip = 0, signal?: AbortSignal): Promise<Pro
     throw new Error('The product response was invalid. Please try again.');
   }
   return page;
+}
+
+export async function fetchFilteredProducts(filters: CatalogFilters, signal?: AbortSignal): Promise<Product[]> {
+  // DummyJSON cannot combine search, category and stock. Filter the complete result, not just a loaded page.
+  const page = await fetchProducts(0, signal, { ...filters, limit: 0 });
+  return page.products.filter(product => (!filters.category || product.category === filters.category) &&
+    (filters.stock === 'in' ? product.stock > 0 : filters.stock === 'out' ? product.stock === 0 : true));
 }

@@ -13,6 +13,7 @@ import { useCart } from './CartContext';
 import { RootStackParamList } from './navigation';
 import FooterTabs from './FooterTabs';
 import CatalogControls from './CatalogControls';
+import NotificationPopup from './NotificationPopup';
 import { useDebouncedValue } from './useDebouncedValue';
 
 const accent = '#E86619';
@@ -61,6 +62,7 @@ function CatalogState({ status, retry, filtered, clear }: { status: 'loading' | 
 export default function ProductsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { notifications = [] } = useCart();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
   const [brand, setBrand] = useState('');
@@ -86,12 +88,13 @@ export default function ProductsScreen() {
           <View style={styles.headerActions}>
             <CartButton onPress={() => navigation.navigate('Cart')} />
             <Pressable accessibilityRole="button" accessibilityLabel="Open notifications" style={styles.notification}
-              onPress={() => navigation.navigate('Notifications')}><Ionicons name="notifications-outline" size={23} color="#20242B" />
+              onPress={() => setNotificationsOpen(true)}><Ionicons name="notifications-outline" size={23} color="#20242B" />
               {notifications.length > 0 && <View style={styles.notificationDot} />}
             </Pressable>
           </View>
         </View>
         <CatalogControls query={query} onQuery={setQuery} category={category} brand={brand} minPrice={minPrice} maxPrice={maxPrice} onApply={applyFilters} />
+        {notificationsOpen && <NotificationPopup notifications={notifications} onClose={() => setNotificationsOpen(false)} onViewAll={() => { setNotificationsOpen(false); navigation.navigate('Notifications'); }} />}
         <View style={styles.listHeading} accessibilityLiveRegion="polite">
           <Text style={styles.sectionLabel}>{filtered ? 'RESULTS' : 'ALL PRODUCTS'}</Text>
           {filtered && <Pressable accessibilityRole="button" accessibilityLabel="Reset filters" onPress={clear} style={styles.reset}><Text style={styles.resetText}>Reset</Text></Pressable>}

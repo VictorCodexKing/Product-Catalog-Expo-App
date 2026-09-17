@@ -46,10 +46,11 @@ test('debounces typing and applies category, brand, and price filters, then rese
     await fireEvent.press(screen.getByRole('radio', { name: 'Beauty' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Brands, All brands' }));
     await fireEvent.press(screen.getByRole('radio', { name: 'Everyday' }));
-    await fireEvent(screen.getByLabelText('Minimum price'), 'valueChange', 10);
+    expect(screen.queryByLabelText('Minimum price')).toBeNull();
+    expect(screen.getByLabelText('Maximum price')).toHaveProp('maximumValue', 37000);
     await fireEvent(screen.getByLabelText('Maximum price'), 'valueChange', 50);
     await fireEvent.press(screen.getByRole('button', { name: 'View results' }));
-    expect(useProductsMock).toHaveBeenLastCalledWith({ query: 'phone', category: 'beauty', brand: 'Everyday', minPrice: 10, maxPrice: 50 });
+    expect(useProductsMock).toHaveBeenLastCalledWith({ query: 'phone', category: 'beauty', brand: 'Everyday', minPrice: null, maxPrice: 50 });
     await fireEvent.press(screen.getByRole('button', { name: 'Reset filters' }));
     await act(() => jest.advanceTimersByTime(350));
     expect(useProductsMock).toHaveBeenLastCalledWith({ query: '', category: '', brand: '', minPrice: null, maxPrice: null });
@@ -147,6 +148,9 @@ test('opens notifications from the header and account settings through More', as
   await render(<ProductsScreen />);
   expect(screen.queryByText('V24')).toBeNull();
   await fireEvent.press(screen.getByRole('button', { name: 'Open notifications' }));
+  expect(mockNavigate).not.toHaveBeenCalled();
+  expect(screen.getByText('All caught up')).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: 'View all notifications' }));
   expect(mockNavigate).toHaveBeenCalledWith('Notifications');
   await fireEvent.press(screen.getByRole('tab', { name: 'More' }));
   expect(mockNavigate).toHaveBeenCalledWith('More');

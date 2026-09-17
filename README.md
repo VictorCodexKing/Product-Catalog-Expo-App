@@ -29,22 +29,23 @@ Home and Orders remain disabled placeholders for later features.
 - Product and review ratings appear only as stars; screen readers can read the exact rating.
 - Small red discount badges on list thumbnails; details keep the discount beside the price only. Badges round to whole percentages like the reference. The API price stays the selling price; the crossed-out reference price is calculated using the exact discount percentage.
 - Dimensions and weight display the API values without inventing units, which DummyJSON does not specify.
-- Add selected quantities to the cart, update quantities or remove items, and view the total. Quantities respect stock limits.
+- Add one item per tap to the cart, update quantities or remove items, and view the total. Quantities respect stock limits.
 - Cart state lasts while the app is open and survives screen navigation; restarting the app resets it.
 - Details have separate loading, retryable error, and product-not-found states. Empty reviews and unavailable images have fallbacks.
 
 ## Feature 4 — purchase controls and cart refinements
 
-- Clean detail layout with quantity controls in the content and a fixed action bar: an icon-only outlined cart action and a 70%-wide vibrant orange Buy Now button.
+- Clean detail layout with a transparent cart icon and label, a subtle divider, and a 70%-wide vibrant orange Buy Now button. Buy Now opens a bottom sheet with thumbnail, pricing, stock, quantity, and a full-width confirmation button. Dismissing it leaves the cart and checkout unchanged.
 - Larger cart thumbnails, selling and original prices, quantity controls on the right, and swipe-left to reveal Delete. The ellipsis button offers the same action without a swipe.
 - Checkout reviews the entire cart; Buy Now reviews only the selected product and quantity, leaving the existing cart intact.
 - Checkout is a local demo: no payment, delivery, or server order is created. Confirming a cart checkout clears that cart; confirming Buy Now preserves it and creates an in-app purchase notification with an estimated delivery date.
 - Shopping cart and notification icons remain in the catalog header. More contains the local preview account information; completed demo purchases appear in Notifications.
+- The bell opens a compact preview of the three latest notifications with a View all notifications action. Tap an update in the preview or full list to read its purchase and delivery details in a popup.
 
 ## Feature 5 — search and filters
 
 - Search uses `/products/search?q=…` after 350 ms of inactivity, so it covers products beyond the pages already loaded.
-- A single filter button beside search opens a medium popup with Category and Brand dropdowns plus minimum/maximum price sliders. Brand choices are searchable, alphabetically sorted, and grouped by first letter. Status and always-visible Category controls were removed.
+- A single filter button beside search opens a medium popup with Category and Brand dropdowns and one maximum-price slider ($0–$37,000). The minimum stays at $0; the full slider range clears the price restriction. Brand choices are searchable, alphabetically sorted, and grouped by first letter. Status and always-visible Category controls were removed.
 - Normal browsing/search keep 20-item API pages. DummyJSON cannot combine every filter, so combined filters use the complete matching set with `limit=0`, apply the remaining facets locally, and display 20-item pages from that result.
 - Applied-filter count, clear/apply actions, selected chips, loading/retry feedback, reset-all, and a dedicated no-matches state keep the flow understandable.
 

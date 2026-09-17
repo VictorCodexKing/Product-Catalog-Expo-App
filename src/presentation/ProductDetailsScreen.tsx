@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProductDetail } from '../data/products';
@@ -17,6 +18,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetails'>;
 function DetailContent({ product, buyNow }: { product: ProductDetail; buyNow: (quantity: number) => void }) {
   const { items, addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
+  const [buyOpen, setBuyOpen] = useState(false);
   const [added, setAdded] = useState(0);
   useEffect(() => {
     if (!added) return;
@@ -27,7 +29,7 @@ function DetailContent({ product, buyNow }: { product: ProductDetail; buyNow: (q
   const remaining = Math.max(0, product.stock - inCart);
   const amount = Math.min(quantity, product.stock);
   const inStock = product.stock > 0;
-  const cannotAdd = !amount || amount > remaining;
+  const cannotAdd = remaining < 1;
   const selectionTotal = (Math.round(product.price * 100) * amount / 100).toFixed(2);
 
   return (
@@ -45,16 +47,6 @@ function DetailContent({ product, buyNow }: { product: ProductDetail; buyNow: (q
           <Text accessibilityRole="header" style={styles.title}>{product.title}</Text>
           <ProductPrice product={product} />
           <View style={styles.ratingRow}><Stars rating={product.rating} /><Text style={styles.muted}>{product.reviews.length} {product.reviews.length === 1 ? 'review' : 'reviews'}</Text></View>
-          <View style={styles.quantityCard}>
-            <View><Text style={styles.quantityLabel}>Quantity</Text><Text accessibilityLabel={`Selected quantity total: $${selectionTotal}`} style={styles.quantityTotal}>${selectionTotal} total</Text></View>
-            <View style={styles.stepper}>
-              <Pressable accessibilityRole="button" accessibilityLabel="Decrease quantity" disabled={amount <= 1}
-                style={styles.step} onPress={() => setQuantity(amount - 1)}><Ionicons name="remove" size={18} color={amount <= 1 ? '#BCC0C6' : '#20242B'} /></Pressable>
-              <Text accessibilityLabel={`Quantity ${amount}`} style={styles.quantity}>{amount}</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Increase quantity" disabled={amount >= product.stock}
-                style={styles.step} onPress={() => setQuantity(amount + 1)}><Ionicons name="add" size={18} color={amount >= product.stock ? '#BCC0C6' : '#20242B'} /></Pressable>
-            </View>
-          </View>
 
           <View style={styles.section}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>Description</Text>
@@ -99,23 +91,55 @@ function DetailContent({ product, buyNow }: { product: ProductDetail; buyNow: (q
           <Pressable accessibilityRole="button" accessibilityLabel="Add to cart" disabled={cannotAdd}
             style={({ pressed }) => [styles.addButton, cannotAdd && styles.disabledOutline, pressed && styles.pressed]} onPress={() => {
               if (cannotAdd) return;
-              addItem(product, amount);
+              addItem(product, 1);
               setAdded(previous => previous + 1);
               void purchaseFeedback('cart');
               setQuantity(1);
             }}>
             <Ionicons name={added ? 'checkmark' : 'cart-outline'} size={23} color={cannotAdd ? '#A4A9B1' : '#252930'} />
+            <Text style={[styles.cartLabel, cannotAdd && { color: '#A4A9B1' }]}>{added ? 'Added' : 'Add to Cart'}</Text>
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Buy now" disabled={!inStock}
             style={({ pressed }) => [styles.buyButton, !inStock && styles.disabledButton, pressed && styles.pressed]} onPress={() => {
               if (!inStock) return;
               void purchaseFeedback('buy');
-              buyNow(amount);
+              setQuantity(1);
+              setBuyOpen(true);
             }}>
             <Text style={styles.addText}>Buy Now</Text>
           </Pressable>
         </View>
       </View>
+      <Modal visible={buyOpen} transparent animationType="slide" onRequestClose={() => setBuyOpen(false)}>
+        <View style={styles.sheetOverlay}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Dismiss purchase options" onPress={() => setBuyOpen(false)} style={StyleSheet.absoluteFill} />
+          <SafeAreaView edges={['bottom']} style={styles.sheet} accessibilityViewIsModal>
+            <View style={styles.handle} />
+            <View style={styles.sheetHeading}><Text accessibilityRole="header" style={styles.sectionTitle}>Your selection</Text><Pressable accessibilityRole="button" accessibilityLabel="Close purchase options" onPress={() => setBuyOpen(false)} style={styles.step}><Ionicons name="close" size={24} color="#252930" /></Pressable></View>
+            <ScrollView contentContainerStyle={styles.sheetContent}>
+              <View style={styles.sheetProduct}>
+                <Image source={{ uri: product.thumbnail }} contentFit="contain" style={styles.sheetImage} accessibilityLabel={`${product.title} thumbnail`} />
+                <View style={styles.sheetInfo}><Text numberOfLines={2} style={styles.sectionTitle}>{product.title}</Text><ProductPrice product={product} /><Text style={styles.muted}>{product.stock} in stock</Text></View>
+              </View>
+              <View style={styles.quantityCard}>
+                <View><Text style={styles.quantityLabel}>Quantity</Text><Text accessibilityLabel={`Selected quantity total: $${selectionTotal}`} style={styles.quantityTotal}>${selectionTotal} total</Text></View>
+                <View style={styles.stepper}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Decrease quantity" disabled={amount <= 1} style={styles.step} onPress={() => setQuantity(amount - 1)}><Ionicons name="remove" size={18} color={amount <= 1 ? '#BCC0C6' : '#20242B'} /></Pressable>
+                  <Text accessibilityLabel={`Quantity ${amount}`} style={styles.quantity}>{amount}</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Increase quantity" disabled={amount >= product.stock} style={styles.step} onPress={() => setQuantity(amount + 1)}><Ionicons name="add" size={18} color={amount >= product.stock ? '#BCC0C6' : '#20242B'} /></Pressable>
+                </View>
+              </View>
+            </ScrollView>
+            <Pressable accessibilityRole="button" accessibilityLabel="Confirm buy now" disabled={!inStock} style={[styles.buyButton, styles.confirmButton]} onPress={() => {
+              // Quantity is confirmed here; opening or dismissing the sheet never changes the cart.
+              if (!amount) return;
+              setBuyOpen(false);
+              void purchaseFeedback('buy');
+              buyNow(amount);
+            }}><Text style={styles.addText}>Buy Now · ${selectionTotal}</Text></Pressable>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -192,7 +216,17 @@ const styles = StyleSheet.create({
   stepper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E4E6E9', borderRadius: 25 },
   step: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   quantity: { minWidth: 26, fontSize: 14, fontWeight: '600', color: '#20242B', textAlign: 'center' },
-  addButton: { flex: 1, minHeight: 54, borderRadius: 18, borderWidth: 1.5, borderColor: '#252930', backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
+  addButton: { flex: 1, minHeight: 54, borderRightWidth: 1, borderColor: '#E4E6E9', backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', gap: 4 },
+  cartLabel: { fontSize: 10, fontWeight: '600', color: '#252930', textAlign: 'center' },
+  sheetOverlay: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', backgroundColor: '#18202C73' },
+  sheet: { width: '100%', maxWidth: 560, maxHeight: '85%', borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: '#FFFFFF', paddingHorizontal: 22, paddingBottom: 16 },
+  handle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: '#DADDE2', marginTop: 10 },
+  sheetHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 6 },
+  sheetContent: { gap: 20, paddingBottom: 22 },
+  sheetProduct: { flexDirection: 'row', gap: 16, alignItems: 'center' },
+  sheetImage: { width: 100, height: 112, borderRadius: 16, backgroundColor: '#F4F5F7' },
+  sheetInfo: { flex: 1, gap: 10 },
+  confirmButton: { width: '100%', minHeight: 58, marginBottom: 8 },
   addText: { fontSize: 13, fontWeight: '600', color: '#FFFFFF', flexShrink: 1, textAlign: 'center' },
   buyButton: { width: '70%', minHeight: 54, paddingHorizontal: 20, borderRadius: 18, backgroundColor: '#FF5A00', justifyContent: 'center', alignItems: 'center' },
   toast: { position: 'absolute', right: 24, top: -39, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 13, paddingVertical: 8, borderRadius: 18, backgroundColor: '#E8F7ED', borderWidth: 1, borderColor: '#C7EAD2' },

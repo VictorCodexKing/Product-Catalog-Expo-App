@@ -6,6 +6,7 @@ import { ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, StyleSheet, 
 import { CatalogFacets, CatalogFilters, fetchCatalogFacets } from '../data/products';
 
 const accent = '#FF5A00';
+const priceLimit = 37000;
 const label = (value: string) => value.replace(/-/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
 type AppliedFilters = Pick<CatalogFilters, 'category' | 'brand' | 'minPrice' | 'maxPrice'>;
 type Props = AppliedFilters & { query: string; onQuery: (value: string) => void; onApply: (filters: AppliedFilters) => void };
@@ -21,7 +22,6 @@ export default function CatalogControls({ query, category = '', brand = '', minP
   const [attempt, setAttempt] = useState(0);
   const [draftCategory, setDraftCategory] = useState(category);
   const [draftBrand, setDraftBrand] = useState(brand);
-  const [draftMin, setDraftMin] = useState(minPrice ?? 0);
   const [draftMax, setDraftMax] = useState(maxPrice);
   const priceActive = minPrice != null || maxPrice != null;
   const activeCount = Number(Boolean(category)) + Number(Boolean(brand)) + Number(priceActive);
@@ -36,24 +36,22 @@ export default function CatalogControls({ query, category = '', brand = '', minP
     Keyboard.dismiss();
     setDraftCategory(category);
     setDraftBrand(brand);
-    setDraftMin(minPrice ?? 0);
-    setDraftMax(maxPrice ?? facets?.maxPrice ?? null);
+    setDraftMax(maxPrice ?? priceLimit);
     setPicker(null);
     setOpen(true);
   };
   const clear = () => {
     setDraftCategory('');
     setDraftBrand('');
-    setDraftMin(0);
-    setDraftMax(facets?.maxPrice ?? null);
+    setDraftMax(priceLimit);
   };
   const apply = () => {
     if (!facets) return;
     onApply({
       category: draftCategory,
       brand: draftBrand,
-      minPrice: draftMin > 0 ? Math.round(draftMin) : null,
-      maxPrice: draftMax != null && draftMax < facets.maxPrice ? Math.round(draftMax) : null,
+      minPrice: null, // One thumb controls the upper bound; the lower bound stays at zero.
+      maxPrice: draftMax != null && draftMax < priceLimit ? Math.round(draftMax) : null,
     });
     setOpen(false);
   };
@@ -93,14 +91,11 @@ export default function CatalogControls({ query, category = '', brand = '', minP
               <FilterRow title="Category" value={draftCategory ? label(draftCategory) : 'All categories'} onPress={() => setPicker('category')} />
               <FilterRow title="Brands" value={draftBrand || 'All brands'} onPress={() => setPicker('brand')} />
               <View style={styles.priceSection}>
-                <View style={styles.priceHeading}><Text style={styles.sectionTitle}>Price range</Text><Text style={styles.priceValue}>${Math.round(draftMin)} – ${Math.round(draftMax ?? facets.maxPrice)}</Text></View>
-                <Text style={styles.sliderLabel}>Minimum price</Text>
-                <Slider accessibilityLabel="Minimum price" minimumValue={0} maximumValue={facets.maxPrice} step={1} value={draftMin}
-                  onValueChange={value => setDraftMin(Math.min(value, (draftMax ?? facets.maxPrice) - 1))} minimumTrackTintColor={accent} maximumTrackTintColor="#E1E4E8" thumbTintColor={accent} />
+                <View style={styles.priceHeading}><Text style={styles.sectionTitle}>Price range</Text><Text style={styles.priceValue}>$0 – ${Math.round(draftMax ?? priceLimit).toLocaleString('en-US')}</Text></View>
                 <Text style={styles.sliderLabel}>Maximum price</Text>
-                <Slider accessibilityLabel="Maximum price" minimumValue={0} maximumValue={facets.maxPrice} step={1} value={draftMax ?? facets.maxPrice}
-                  onValueChange={value => setDraftMax(Math.max(value, draftMin + 1))} minimumTrackTintColor={accent} maximumTrackTintColor="#E1E4E8" thumbTintColor={accent} />
-                <View style={styles.priceEnds}><Text style={styles.muted}>$0</Text><Text style={styles.muted}>${facets.maxPrice}</Text></View>
+                <Slider accessibilityLabel="Maximum price" minimumValue={0} maximumValue={priceLimit} step={1} value={draftMax ?? priceLimit}
+                  onValueChange={setDraftMax} minimumTrackTintColor={accent} maximumTrackTintColor="#E1E4E8" thumbTintColor={accent} />
+                <View style={styles.priceEnds}><Text style={styles.muted}>$0</Text><Text style={styles.muted}>$37,000</Text></View>
               </View>
             </View>
             <View style={styles.actions}>

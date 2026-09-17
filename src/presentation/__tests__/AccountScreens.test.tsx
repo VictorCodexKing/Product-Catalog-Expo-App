@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ComponentProps, useEffect } from 'react';
 
 import { NotificationsScreen } from '../AccountScreens';
@@ -25,4 +25,8 @@ test('shows purchase confirmation and estimated delivery after checkout', async 
   expect(screen.getByText('Purchase confirmed')).toBeOnTheScreen();
   expect(screen.getByText(/2 items purchased\. Estimated delivery/)).toBeOnTheScreen();
   expect(screen.queryByText('All caught up')).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: 'View notification: Purchase confirmed' }));
+  expect(screen.getByText('Purchase update')).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: 'View all notifications' }));
+  expect(screen.queryByText('Purchase update')).toBeNull();
 });

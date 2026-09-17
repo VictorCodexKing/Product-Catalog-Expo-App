@@ -1,9 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import FooterTabs from './FooterTabs';
-import { useCart } from './CartContext';
+import { PurchaseNotification, useCart } from './CartContext';
+import NotificationPopup from './NotificationPopup';
 import { RootStackParamList } from './navigation';
 import ScreenShell from './ScreenShell';
 
@@ -26,6 +28,7 @@ export function MoreScreen({ navigation }: NativeStackScreenProps<RootStackParam
 
 export function NotificationsScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Notifications'>) {
   const { notifications } = useCart();
+  const [selected, setSelected] = useState<PurchaseNotification | null>(null);
   return <ScreenShell title="Notifications" goBack={navigation.goBack}>
     {!notifications.length ? <View style={styles.empty}>
       <View style={styles.avatar}><Ionicons name="notifications-outline" size={30} color="#E86619" /></View>
@@ -33,15 +36,16 @@ export function NotificationsScreen({ navigation }: NativeStackScreenProps<RootS
       <Text style={styles.muted}>You have no notifications yet.</Text>
     </View> : <ScrollView contentContainerStyle={styles.notifications}>
       <Text style={styles.muted}>Updates about your recent purchases.</Text>
-      {notifications.map(notification => <View key={notification.id} style={styles.notificationCard}>
+      {notifications.map(notification => <Pressable key={notification.id} accessibilityRole="button" accessibilityLabel={`View notification: ${notification.title}`} onPress={() => setSelected(notification)} style={styles.notificationCard}>
         <View style={styles.notificationIcon}><Ionicons name="checkmark-circle" size={24} color="#E86619" /></View>
         <View style={styles.notificationText}>
           <Text style={styles.notificationTitle}>{notification.title}</Text>
           <Text style={styles.muted}>{notification.message}</Text>
           <Text style={styles.time}>{new Date(notification.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</Text>
         </View>
-      </View>)}
+      </Pressable>)}
     </ScrollView>}
+    {selected && <NotificationPopup notifications={[selected]} initialSelection={selected} onClose={() => setSelected(null)} onViewAll={() => setSelected(null)} />}
   </ScreenShell>;
 }
 

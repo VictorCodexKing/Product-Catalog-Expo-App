@@ -82,6 +82,8 @@ test('records a purchase notification with the item count and delivery estimate'
   const { result } = await renderHook(useCart, { wrapper: CartProvider });
   await act(() => result.current.recordPurchase([{ product, quantity: 2 }]));
   expect(result.current.notifications).toHaveLength(1);
-  expect(result.current.notifications[0]).toMatchObject({ title: 'Purchase confirmed' });
+  expect(result.current.notifications[0]).toMatchObject({ title: 'Purchase confirmed', items: '2× Perfume', total: 19.98, viewed: false });
   expect(result.current.notifications[0].message).toMatch(/^2 items purchased\. Estimated delivery .+\.$/);
+  await act(() => result.current.markNotificationViewed(result.current.notifications[0].id));
+  expect(result.current.notifications[0].viewed).toBe(true);
 });

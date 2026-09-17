@@ -40,7 +40,7 @@ Home and Orders remain disabled placeholders for later features.
 - Checkout reviews the entire cart; Buy Now reviews only the selected product and quantity, leaving the existing cart intact.
 - Checkout is a local demo: no payment, delivery, or server order is created. Confirming a cart checkout clears that cart; confirming Buy Now preserves it and creates an in-app purchase notification with an estimated delivery date.
 - Shopping cart and notification icons remain in the catalog header. More contains the local preview account information; completed demo purchases appear in Notifications.
-- The bell opens a compact preview of the three latest notifications with a View all notifications action. Tap an update in the preview or full list to read its purchase and delivery details in a popup.
+- The bell opens the Notifications page directly. Purchase updates start unread; tapping one opens its order details, and pressing View marks it as viewed. Longer lists initially show five updates with a View All action.
 
 ## Feature 5 — search and filters
 

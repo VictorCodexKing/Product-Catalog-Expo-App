@@ -148,9 +148,6 @@ test('opens notifications from the header and account settings through More', as
   await render(<ProductsScreen />);
   expect(screen.queryByText('V24')).toBeNull();
   await fireEvent.press(screen.getByRole('button', { name: 'Open notifications' }));
-  expect(mockNavigate).not.toHaveBeenCalled();
-  expect(screen.getByText('All caught up')).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole('button', { name: 'View all notifications' }));
   expect(mockNavigate).toHaveBeenCalledWith('Notifications');
   await fireEvent.press(screen.getByRole('tab', { name: 'More' }));
   expect(mockNavigate).toHaveBeenCalledWith('More');

@@ -75,7 +75,7 @@ export default function CatalogControls({ query, category = '', brand = '', minP
     <Modal visible={open} transparent animationType="fade" onRequestClose={() => picker ? setPicker(null) : setOpen(false)}>
       <View style={styles.overlay}>
         <Pressable accessibilityRole="button" accessibilityLabel="Dismiss filters" onPress={() => setOpen(false)} style={StyleSheet.absoluteFill} />
-        <View style={styles.popup} accessibilityViewIsModal>
+        <View style={[styles.popup, !picker && facets && styles.filterPopup]} accessibilityViewIsModal>
           <View style={styles.popupHeader}>
             {picker ? <Pressable accessibilityRole="button" accessibilityLabel="Back to filters" onPress={() => { setPicker(null); setOptionSearch(''); }} style={styles.iconButton}><Ionicons name="chevron-back" size={24} color="#252930" /></Pressable> : <View style={styles.iconSpacer} />}
             <Text accessibilityRole="header" style={styles.popupTitle}>{picker ? label(picker) : 'Filters'}</Text>
@@ -153,9 +153,10 @@ const styles = StyleSheet.create({
   countText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
   overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#18202C73', padding: 20 },
   popup: { width: '100%', maxWidth: 440, height: '72%', maxHeight: 600, minHeight: 450, borderRadius: 26, backgroundColor: '#FFFFFF', overflow: 'hidden' },
+  filterPopup: { height: 'auto', minHeight: 0 },
   popupHeader: { minHeight: 66, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, borderBottomWidth: 1, borderColor: '#ECEEF1' },
   popupTitle: { fontSize: 18, fontWeight: '800', color: '#252930', textTransform: 'capitalize' },
-  filterBody: { flex: 1, paddingHorizontal: 22, paddingTop: 8 },
+  filterBody: { paddingHorizontal: 22, paddingTop: 8, paddingBottom: 12 },
   filterRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderColor: '#ECEEF1', paddingHorizontal: 4 },
   rowText: { flex: 1, gap: 6 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: '#252930' },

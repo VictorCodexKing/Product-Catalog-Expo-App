@@ -1,9 +1,9 @@
-import { createContext, PropsWithChildren, useCallback, useContext, useState } from 'react';
+import { createContext, PropsWithChildren, useCallback, useContext, useRef, useState } from 'react';
 
 import { Product } from '../data/products';
 
 export type CartItem = { product: Product; quantity: number };
-export type PurchaseNotification = { id: number; title: string; message: string; createdAt: string };
+export type PurchaseNotification = { id: number; title: string; message: string; createdAt: string; items: string; total: number; viewed: boolean };
 type CartState = {
   items: CartItem[];
   itemCount: number;
@@ -12,6 +12,7 @@ type CartState = {
   addItem: (product: Product, quantity: number) => void;
   setQuantity: (id: number, quantity: number) => void;
   recordPurchase: (items: CartItem[]) => PurchaseNotification | null;
+  markNotificationViewed: (id: number) => void;
 };
 
 const CartContext = createContext<CartState | null>(null);
@@ -20,6 +21,7 @@ const clamp = (quantity: number, stock: number) => Math.min(stock, Math.max(0, M
 export function CartProvider({ children }: PropsWithChildren) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [notifications, setNotifications] = useState<PurchaseNotification[]>([]);
+  const notificationId = useRef(0);
   const addItem = useCallback((product: Product, quantity: number) => {
     if (!Number.isFinite(quantity) || quantity < 1) return;
     // Functional updates keep rapid additions within the latest stock limit.
@@ -40,20 +42,27 @@ export function CartProvider({ children }: PropsWithChildren) {
     if (!count) return null;
     const createdAt = new Date();
     const delivery = new Date(createdAt.getTime() + 5 * 24 * 60 * 60 * 1000);
+    const total = purchased.reduce((cents, item) => cents + Math.round(item.product.price * 100) * item.quantity, 0) / 100;
     const notification = {
-      id: createdAt.getTime(),
+      id: createdAt.getTime() * 1000 + ++notificationId.current,
       title: 'Purchase confirmed',
       message: `${count} ${count === 1 ? 'item' : 'items'} purchased. Estimated delivery ${delivery.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`,
       createdAt: createdAt.toISOString(),
+      items: purchased.map(item => `${item.quantity}× ${item.product.title}`).join(', '),
+      total,
+      viewed: false,
     };
     setNotifications(previous => [notification, ...previous]);
     return notification;
+  }, []);
+  const markNotificationViewed = useCallback((id: number) => {
+    setNotifications(previous => previous.map(notification => notification.id === id ? { ...notification, viewed: true } : notification));
   }, []);
 
   const itemCount = items.reduce((count, item) => count + item.quantity, 0);
   // Sum integer cents so quantity changes do not accumulate floating-point errors.
   const total = items.reduce((cents, item) => cents + Math.round(item.product.price * 100) * item.quantity, 0) / 100;
-  return <CartContext.Provider value={{ items, itemCount, total, notifications, addItem, setQuantity, recordPurchase }}>{children}</CartContext.Provider>;
+  return <CartContext.Provider value={{ items, itemCount, total, notifications, addItem, setQuantity, recordPurchase, markNotificationViewed }}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {

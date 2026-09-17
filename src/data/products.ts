@@ -68,7 +68,7 @@ export async function fetchProduct(id: number, signal?: AbortSignal): Promise<Pr
   return product;
 }
 
-export type CatalogFilters = { query?: string; category?: string; brand?: string; maxPrice?: number | null };
+export type CatalogFilters = { query?: string; category?: string; brand?: string; minPrice?: number | null; maxPrice?: number | null };
 
 export type CatalogFacets = { categories: string[]; brands: string[]; maxPrice: number };
 
@@ -83,8 +83,8 @@ export async function fetchCategories(signal?: AbortSignal): Promise<string[]> {
 export async function fetchCatalogFacets(signal?: AbortSignal): Promise<CatalogFacets> {
   const { products } = await fetchProducts(0, signal, { limit: 0 });
   return {
-    categories: [...new Set(products.map(product => product.category))].sort(),
-    brands: [...new Set(products.map(product => product.brand).filter((brand): brand is string => Boolean(brand)))].sort(),
+    categories: [...new Set(products.map(product => product.category))].sort((a, b) => a.localeCompare(b)),
+    brands: [...new Set(products.map(product => product.brand).filter((brand): brand is string => Boolean(brand)))].sort((a, b) => a.localeCompare(b)),
     maxPrice: Math.ceil(Math.max(0, ...products.map(product => product.price))),
   };
 }
@@ -111,5 +111,6 @@ export async function fetchFilteredProducts(filters: CatalogFilters, signal?: Ab
   const page = await fetchProducts(0, signal, { ...filters, limit: 0 });
   return page.products.filter(product => (!filters.category || product.category === filters.category) &&
     (!filters.brand || product.brand === filters.brand) &&
+    (filters.minPrice == null || product.price >= filters.minPrice) &&
     (filters.maxPrice == null || product.price <= filters.maxPrice));
 }

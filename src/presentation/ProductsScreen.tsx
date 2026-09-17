@@ -64,17 +64,19 @@ export default function ProductsScreen() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
   const [brand, setBrand] = useState('');
+  const [minPrice, setMinPrice] = useState<number | null>(null);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const debouncedQuery = useDebouncedValue(query.trim());
   const waiting = query.trim() !== debouncedQuery;
-  const filtered = Boolean(query.trim() || category || brand || maxPrice != null);
-  const clear = () => { setQuery(''); setCategory(''); setBrand(''); setMaxPrice(null); };
-  const applyFilters = (filters: Pick<CatalogFilters, 'category' | 'brand' | 'maxPrice'>) => {
+  const filtered = Boolean(query.trim() || category || brand || minPrice != null || maxPrice != null);
+  const clear = () => { setQuery(''); setCategory(''); setBrand(''); setMinPrice(null); setMaxPrice(null); };
+  const applyFilters = (filters: Pick<CatalogFilters, 'category' | 'brand' | 'minPrice' | 'maxPrice'>) => {
     setCategory(filters.category ?? '');
     setBrand(filters.brand ?? '');
+    setMinPrice(filters.minPrice ?? null);
     setMaxPrice(filters.maxPrice ?? null);
   };
-  const { products, total, status: resultStatus, retry, loadMore, loadingMore, pageError, retryMore, hasMore } = useProducts({ query: debouncedQuery, category, brand, maxPrice });
+  const { products, total, status: resultStatus, retry, loadMore, loadingMore, pageError, retryMore, hasMore } = useProducts({ query: debouncedQuery, category, brand, minPrice, maxPrice });
   const status = waiting ? 'loading' : resultStatus;
   return (
     <SafeAreaView style={styles.page}>
@@ -89,14 +91,14 @@ export default function ProductsScreen() {
             </Pressable>
           </View>
         </View>
-        <CatalogControls query={query} onQuery={setQuery} category={category} brand={brand} maxPrice={maxPrice} onApply={applyFilters} />
+        <CatalogControls query={query} onQuery={setQuery} category={category} brand={brand} minPrice={minPrice} maxPrice={maxPrice} onApply={applyFilters} />
         <View style={styles.listHeading} accessibilityLiveRegion="polite">
           <Text style={styles.sectionLabel}>{filtered ? 'RESULTS' : 'ALL PRODUCTS'}</Text>
           {filtered && <Pressable accessibilityRole="button" accessibilityLabel="Reset filters" onPress={clear} style={styles.reset}><Text style={styles.resetText}>Reset</Text></Pressable>}
           {status === 'success' && <Text style={styles.count}>{products.length} of {total}</Text>}
         </View>
         {status !== 'success' ? <CatalogState status={status} retry={retry} filtered={filtered} clear={clear} /> : (
-          <FlatList key={JSON.stringify([debouncedQuery, category, brand, maxPrice])} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" data={products} keyExtractor={item => String(item.id)}
+          <FlatList key={JSON.stringify([debouncedQuery, category, brand, minPrice, maxPrice])} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" data={products} keyExtractor={item => String(item.id)}
             renderItem={({ item }) => <ProductRow product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />}
             onEndReached={loadMore} onEndReachedThreshold={0.4}
             contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}

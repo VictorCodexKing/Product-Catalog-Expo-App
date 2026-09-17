@@ -44,7 +44,7 @@ Home and Orders remain disabled placeholders for later features.
 ## Feature 5 — search and filters
 
 - Search uses `/products/search?q=…` after 350 ms of inactivity, so it covers products beyond the pages already loaded.
-- A single filter button beside search opens a bottom sheet with Category, Brand, and a maximum-price slider. Status and always-visible Category controls were removed.
+- A single filter button beside search opens a medium popup with Category and Brand dropdowns plus minimum/maximum price sliders. Brand choices are searchable, alphabetically sorted, and grouped by first letter. Status and always-visible Category controls were removed.
 - Normal browsing/search keep 20-item API pages. DummyJSON cannot combine every filter, so combined filters use the complete matching set with `limit=0`, apply the remaining facets locally, and display 20-item pages from that result.
 - Applied-filter count, clear/apply actions, selected chips, loading/retry feedback, reset-all, and a dedicated no-matches state keep the flow understandable.
 

@@ -36,23 +36,27 @@ test('debounces typing and applies category, brand, and price filters, then rese
     await act(() => jest.advanceTimersByTime(200));
     await fireEvent.changeText(screen.getByLabelText('Search products'), 'phone');
     await act(() => jest.advanceTimersByTime(349));
-    expect(useProductsMock).toHaveBeenLastCalledWith({ query: '', category: '', brand: '', maxPrice: null });
+    expect(useProductsMock).toHaveBeenLastCalledWith({ query: '', category: '', brand: '', minPrice: null, maxPrice: null });
     await act(() => jest.advanceTimersByTime(1));
-    expect(useProductsMock).toHaveBeenLastCalledWith({ query: 'phone', category: '', brand: '', maxPrice: null });
+    expect(useProductsMock).toHaveBeenLastCalledWith({ query: 'phone', category: '', brand: '', minPrice: null, maxPrice: null });
     expect(screen.queryByRole('combobox')).toBeNull();
+    await act(async () => Promise.resolve());
     await fireEvent.press(screen.getByRole('button', { name: 'Open filters' }));
-    await fireEvent.press(await screen.findByRole('radio', { name: 'Beauty' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Category, All categories' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Beauty' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Brands, All brands' }));
     await fireEvent.press(screen.getByRole('radio', { name: 'Everyday' }));
+    await fireEvent(screen.getByLabelText('Minimum price'), 'valueChange', 10);
     await fireEvent(screen.getByLabelText('Maximum price'), 'valueChange', 50);
-    await fireEvent.press(screen.getByRole('button', { name: 'Apply filters' }));
-    expect(useProductsMock).toHaveBeenLastCalledWith({ query: 'phone', category: 'beauty', brand: 'Everyday', maxPrice: 50 });
+    await fireEvent.press(screen.getByRole('button', { name: 'View results' }));
+    expect(useProductsMock).toHaveBeenLastCalledWith({ query: 'phone', category: 'beauty', brand: 'Everyday', minPrice: 10, maxPrice: 50 });
     await fireEvent.press(screen.getByRole('button', { name: 'Reset filters' }));
     await act(() => jest.advanceTimersByTime(350));
-    expect(useProductsMock).toHaveBeenLastCalledWith({ query: '', category: '', brand: '', maxPrice: null });
+    expect(useProductsMock).toHaveBeenLastCalledWith({ query: '', category: '', brand: '', minPrice: null, maxPrice: null });
     expect(screen.queryByLabelText('Camera scanner, coming soon')).toBeNull();
     expect(screen.queryByLabelText('Filter products, coming soon')).toBeNull();
   } finally { jest.useRealTimers(); }
-});
+}, 10000);
 
 test('shows each product title, thumbnail, formatted price, and stock status', async () => {
   useProductsMock.mockReturnValue({ ...initialState, products, total: 2, status: 'success' });

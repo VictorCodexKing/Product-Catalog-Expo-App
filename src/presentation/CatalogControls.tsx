@@ -1,25 +1,30 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Slider from '@react-native-community/slider';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { CatalogFacets, CatalogFilters, fetchCatalogFacets } from '../data/products';
 
 const accent = '#FF5A00';
 const label = (value: string) => value.replace(/-/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
-type AppliedFilters = Pick<CatalogFilters, 'category' | 'brand' | 'maxPrice'>;
+type AppliedFilters = Pick<CatalogFilters, 'category' | 'brand' | 'minPrice' | 'maxPrice'>;
 type Props = AppliedFilters & { query: string; onQuery: (value: string) => void; onApply: (filters: AppliedFilters) => void };
+type Picker = 'category' | 'brand' | null;
 
-export default function CatalogControls({ query, category = '', brand = '', maxPrice = null, onQuery, onApply }: Props) {
+export default function CatalogControls({ query, category = '', brand = '', minPrice = null, maxPrice = null, onQuery, onApply }: Props) {
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [picker, setPicker] = useState<Picker>(null);
+  const [optionSearch, setOptionSearch] = useState('');
   const [facets, setFacets] = useState<CatalogFacets | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [draftCategory, setDraftCategory] = useState(category);
   const [draftBrand, setDraftBrand] = useState(brand);
-  const [draftPrice, setDraftPrice] = useState(maxPrice);
-  const activeCount = Number(Boolean(category)) + Number(Boolean(brand)) + Number(maxPrice != null);
+  const [draftMin, setDraftMin] = useState(minPrice ?? 0);
+  const [draftMax, setDraftMax] = useState(maxPrice);
+  const priceActive = minPrice != null || maxPrice != null;
+  const activeCount = Number(Boolean(category)) + Number(Boolean(brand)) + Number(priceActive);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -31,13 +36,25 @@ export default function CatalogControls({ query, category = '', brand = '', maxP
     Keyboard.dismiss();
     setDraftCategory(category);
     setDraftBrand(brand);
-    setDraftPrice(maxPrice ?? facets?.maxPrice ?? null);
+    setDraftMin(minPrice ?? 0);
+    setDraftMax(maxPrice ?? facets?.maxPrice ?? null);
+    setPicker(null);
     setOpen(true);
   };
-  const clear = () => { setDraftCategory(''); setDraftBrand(''); setDraftPrice(facets?.maxPrice ?? null); };
+  const clear = () => {
+    setDraftCategory('');
+    setDraftBrand('');
+    setDraftMin(0);
+    setDraftMax(facets?.maxPrice ?? null);
+  };
   const apply = () => {
-    const price = facets && draftPrice != null && draftPrice < facets.maxPrice ? Math.round(draftPrice) : null;
-    onApply({ category: draftCategory, brand: draftBrand, maxPrice: price });
+    if (!facets) return;
+    onApply({
+      category: draftCategory,
+      brand: draftBrand,
+      minPrice: draftMin > 0 ? Math.round(draftMin) : null,
+      maxPrice: draftMax != null && draftMax < facets.maxPrice ? Math.round(draftMax) : null,
+    });
     setOpen(false);
   };
 
@@ -48,7 +65,7 @@ export default function CatalogControls({ query, category = '', brand = '', maxP
         <TextInput accessibilityLabel="Search products" placeholder="Search products…" placeholderTextColor="#858B94" value={query}
           onChangeText={onQuery} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} autoCapitalize="none" autoCorrect={false}
           returnKeyType="search" onSubmitEditing={Keyboard.dismiss} style={styles.input} />
-        {query !== '' && <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => onQuery('')} style={styles.clearIcon}><Ionicons name="close-circle" size={20} color="#858B94" /></Pressable>}
+        {query !== '' && <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => onQuery('')} style={styles.iconButton}><Ionicons name="close-circle" size={20} color="#858B94" /></Pressable>}
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel={`Open filters${activeCount ? `, ${activeCount} active` : ''}`} onPress={showFilters}
         style={[styles.filterButton, activeCount > 0 && styles.filterActive]}>
@@ -57,29 +74,38 @@ export default function CatalogControls({ query, category = '', brand = '', maxP
       </Pressable>
     </View>
 
-    <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+    <Modal visible={open} transparent animationType="fade" onRequestClose={() => picker ? setPicker(null) : setOpen(false)}>
       <View style={styles.overlay}>
         <Pressable accessibilityRole="button" accessibilityLabel="Dismiss filters" onPress={() => setOpen(false)} style={StyleSheet.absoluteFill} />
-        <View style={styles.sheet} accessibilityViewIsModal>
-          <View style={styles.handle} />
-          <View style={styles.sheetHeader}>
-            <View><Text accessibilityRole="header" style={styles.sheetTitle}>Filter products</Text><Text style={styles.sheetHint}>Refine your catalog</Text></View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close filters" onPress={() => setOpen(false)} style={styles.close}><Ionicons name="close" size={24} color="#252930" /></Pressable>
+        <View style={styles.popup} accessibilityViewIsModal>
+          <View style={styles.popupHeader}>
+            {picker ? <Pressable accessibilityRole="button" accessibilityLabel="Back to filters" onPress={() => { setPicker(null); setOptionSearch(''); }} style={styles.iconButton}><Ionicons name="chevron-back" size={24} color="#252930" /></Pressable> : <View style={styles.iconSpacer} />}
+            <Text accessibilityRole="header" style={styles.popupTitle}>{picker ? label(picker) : 'Filters'}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close filters" onPress={() => setOpen(false)} style={styles.iconButton}><Ionicons name="close" size={24} color="#252930" /></Pressable>
           </View>
-          {!facets ? <View style={styles.message}>{failed ? <><Text style={styles.messageText}>Couldn’t load filters.</Text><Pressable accessibilityRole="button" accessibilityLabel="Retry filters" onPress={() => { setFailed(false); setAttempt(value => value + 1); }} style={styles.retry}><Text style={styles.applyText}>Try again</Text></Pressable></> : <><ActivityIndicator color={accent} /><Text style={styles.messageText}>Loading filters…</Text></>}</View> : <>
-            <ScrollView contentContainerStyle={styles.options} showsVerticalScrollIndicator={false}>
-              <FilterGroup title="Category" values={facets.categories} selected={draftCategory} onSelect={setDraftCategory} />
-              <FilterGroup title="Brand" values={facets.brands} selected={draftBrand} onSelect={setDraftBrand} />
-              <View style={styles.group}>
-                <View style={styles.groupHeading}><Text style={styles.groupTitle}>Maximum price</Text><Text style={styles.priceValue}>${Math.round(draftPrice ?? facets.maxPrice)}</Text></View>
-                <Slider accessibilityLabel="Maximum price" minimumValue={0} maximumValue={facets.maxPrice} step={1}
-                  value={draftPrice ?? facets.maxPrice} onValueChange={setDraftPrice} minimumTrackTintColor={accent} maximumTrackTintColor="#E8EAED" thumbTintColor={accent} />
-                <View style={styles.priceRange}><Text style={styles.rangeText}>$0</Text><Text style={styles.rangeText}>${facets.maxPrice}</Text></View>
+
+          {!facets ? <View style={styles.message}>{failed ? <><Text style={styles.muted}>Couldn’t load filters.</Text><Pressable accessibilityRole="button" accessibilityLabel="Retry filters" onPress={() => { setFailed(false); setAttempt(value => value + 1); }} style={styles.viewButton}><Text style={styles.viewText}>Try again</Text></Pressable></> : <><ActivityIndicator color={accent} /><Text style={styles.muted}>Loading filters…</Text></>}</View> : picker ? (
+            <OptionPicker type={picker} values={picker === 'brand' ? facets.brands : facets.categories}
+              selected={picker === 'brand' ? draftBrand : draftCategory} search={optionSearch} onSearch={setOptionSearch}
+              onSelect={value => { if (picker === 'brand') setDraftBrand(value); else setDraftCategory(value); setPicker(null); setOptionSearch(''); }} />
+          ) : <>
+            <View style={styles.filterBody}>
+              <FilterRow title="Category" value={draftCategory ? label(draftCategory) : 'All categories'} onPress={() => setPicker('category')} />
+              <FilterRow title="Brands" value={draftBrand || 'All brands'} onPress={() => setPicker('brand')} />
+              <View style={styles.priceSection}>
+                <View style={styles.priceHeading}><Text style={styles.sectionTitle}>Price range</Text><Text style={styles.priceValue}>${Math.round(draftMin)} – ${Math.round(draftMax ?? facets.maxPrice)}</Text></View>
+                <Text style={styles.sliderLabel}>Minimum price</Text>
+                <Slider accessibilityLabel="Minimum price" minimumValue={0} maximumValue={facets.maxPrice} step={1} value={draftMin}
+                  onValueChange={value => setDraftMin(Math.min(value, (draftMax ?? facets.maxPrice) - 1))} minimumTrackTintColor={accent} maximumTrackTintColor="#E1E4E8" thumbTintColor={accent} />
+                <Text style={styles.sliderLabel}>Maximum price</Text>
+                <Slider accessibilityLabel="Maximum price" minimumValue={0} maximumValue={facets.maxPrice} step={1} value={draftMax ?? facets.maxPrice}
+                  onValueChange={value => setDraftMax(Math.max(value, draftMin + 1))} minimumTrackTintColor={accent} maximumTrackTintColor="#E1E4E8" thumbTintColor={accent} />
+                <View style={styles.priceEnds}><Text style={styles.muted}>$0</Text><Text style={styles.muted}>${facets.maxPrice}</Text></View>
               </View>
-            </ScrollView>
+            </View>
             <View style={styles.actions}>
               <Pressable accessibilityRole="button" accessibilityLabel="Clear filters" onPress={clear} style={styles.clearButton}><Text style={styles.clearText}>Clear</Text></Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="Apply filters" onPress={apply} style={styles.applyButton}><Text style={styles.applyText}>Show products</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="View results" onPress={apply} style={styles.viewButton}><Text style={styles.viewText}>View Results</Text></Pressable>
             </View>
           </>}
         </View>
@@ -88,16 +114,34 @@ export default function CatalogControls({ query, category = '', brand = '', maxP
   </View>;
 }
 
-function FilterGroup({ title, values, selected, onSelect }: { title: string; values: string[]; selected: string; onSelect: (value: string) => void }) {
-  return <View style={styles.group}>
-    <View style={styles.groupHeading}><Text style={styles.groupTitle}>{title}</Text>{selected !== '' && <Pressable accessibilityRole="button" accessibilityLabel={`Clear ${title.toLowerCase()}`} onPress={() => onSelect('')}><Text style={styles.clearSmall}>Clear</Text></Pressable>}</View>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-      {values.map(value => <Pressable key={value} accessibilityRole="radio" accessibilityLabel={label(value)} accessibilityState={{ checked: selected === value }}
-        onPress={() => onSelect(selected === value ? '' : value)} style={[styles.chip, selected === value && styles.chipSelected]}>
-        <Text style={[styles.chipText, selected === value && styles.chipTextSelected]}>{label(value)}</Text>
-      </Pressable>)}
+function FilterRow({ title, value, onPress }: { title: string; value: string; onPress: () => void }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={`${title}, ${value}`} onPress={onPress} style={({ pressed }) => [styles.filterRow, pressed && styles.pressed]}>
+    <View style={styles.rowText}><Text style={styles.sectionTitle}>{title}</Text><Text numberOfLines={1} style={styles.rowValue}>{value}</Text></View>
+    <Ionicons name="chevron-forward" size={20} color="#8D939B" />
+  </Pressable>;
+}
+
+function OptionPicker({ type, values, selected, search, onSearch, onSelect }: { type: Exclude<Picker, null>; values: string[]; selected: string; search: string; onSearch: (value: string) => void; onSelect: (value: string) => void }) {
+  const options = useMemo(() => values.filter(value => label(value).toLowerCase().includes(search.trim().toLowerCase()))
+    .sort((a, b) => label(a).localeCompare(label(b))), [search, values]);
+  return <View style={styles.pickerBody}>
+    <View style={styles.optionSearch}><Ionicons name="search-outline" size={20} color="#7E858F" /><TextInput accessibilityLabel={`Search ${type === 'brand' ? 'brands' : 'categories'}`} placeholder={`Search ${type === 'brand' ? 'brands' : 'categories'}…`} value={search} onChangeText={onSearch} style={styles.optionInput} /></View>
+    <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <OptionRow value="" text={`All ${type === 'brand' ? 'brands' : 'categories'}`} selected={selected === ''} onSelect={onSelect} />
+      {options.map((value, index) => {
+        const letter = label(value).charAt(0).toUpperCase();
+        const showLetter = type === 'brand' && letter !== label(options[index - 1] ?? '').charAt(0).toUpperCase();
+        return <View key={value}>{showLetter && <Text style={styles.letter}>{letter}</Text>}<OptionRow value={value} text={label(value)} selected={selected === value} onSelect={onSelect} /></View>;
+      })}
+      {!options.length && <Text style={styles.noOptions}>No matching {type === 'brand' ? 'brands' : 'categories'}.</Text>}
     </ScrollView>
   </View>;
+}
+
+function OptionRow({ value, text, selected, onSelect }: { value: string; text: string; selected: boolean; onSelect: (value: string) => void }) {
+  return <Pressable accessibilityRole="radio" accessibilityLabel={text} accessibilityState={{ checked: selected }} onPress={() => onSelect(value)} style={[styles.optionRow, selected && styles.optionSelected]}>
+    <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{text}</Text>{selected && <Ionicons name="checkmark" size={20} color={accent} />}
+  </Pressable>;
 }
 
 const styles = StyleSheet.create({
@@ -106,37 +150,41 @@ const styles = StyleSheet.create({
   search: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 15, paddingRight: 4, borderRadius: 16, borderWidth: 1, borderColor: '#E7E9ED', backgroundColor: '#F6F7F9' },
   focused: { borderColor: accent, backgroundColor: '#FFFFFF' },
   input: { flex: 1, minWidth: 0, fontSize: 15, color: '#252930', paddingVertical: 14 },
-  clearIcon: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  iconSpacer: { width: 44 },
   filterButton: { width: 52, height: 52, borderRadius: 16, borderWidth: 1, borderColor: '#E2E5E9', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
   filterActive: { backgroundColor: accent, borderColor: accent },
   count: { position: 'absolute', right: -4, top: -5, minWidth: 19, height: 19, paddingHorizontal: 4, borderRadius: 10, backgroundColor: '#252930', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFFFFF' },
   countText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#18202C66' },
-  sheet: { maxHeight: '88%', borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: '#FFFFFF', overflow: 'hidden', paddingTop: 8 },
-  handle: { width: 42, height: 4, borderRadius: 2, alignSelf: 'center', backgroundColor: '#D7DADF', marginBottom: 6 },
-  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, borderBottomWidth: 1, borderColor: '#ECEEF1' },
-  sheetTitle: { fontSize: 22, fontWeight: '700', color: '#252930' },
-  sheetHint: { marginTop: 4, fontSize: 12, color: '#858B94' },
-  close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  options: { padding: 24, gap: 28 },
-  group: { gap: 14 },
-  groupHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  groupTitle: { fontSize: 15, fontWeight: '700', color: '#252930' },
-  clearSmall: { color: '#C24F11', fontSize: 12, fontWeight: '600' },
-  chips: { flexDirection: 'row', gap: 9, paddingRight: 24 },
-  chip: { minHeight: 40, justifyContent: 'center', borderRadius: 20, paddingHorizontal: 15, borderWidth: 1, borderColor: '#E2E5E9', backgroundColor: '#FFFFFF' },
-  chipSelected: { borderColor: '#FFC39F', backgroundColor: '#FFF0E6' },
-  chipText: { fontSize: 12, color: '#4C535C' },
-  chipTextSelected: { color: '#BC4708', fontWeight: '700' },
-  priceValue: { fontSize: 15, fontWeight: '700', color: accent },
-  priceRange: { flexDirection: 'row', justifyContent: 'space-between' },
-  rangeText: { fontSize: 11, color: '#8A9099' },
-  actions: { flexDirection: 'row', gap: 12, paddingHorizontal: 24, paddingTop: 14, paddingBottom: 24, borderTopWidth: 1, borderColor: '#ECEEF1' },
-  clearButton: { width: '30%', minHeight: 52, borderRadius: 16, borderWidth: 1, borderColor: '#DADDE2', alignItems: 'center', justifyContent: 'center' },
+  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#18202C73', padding: 20 },
+  popup: { width: '100%', maxWidth: 440, height: '72%', maxHeight: 600, minHeight: 450, borderRadius: 26, backgroundColor: '#FFFFFF', overflow: 'hidden' },
+  popupHeader: { minHeight: 66, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, borderBottomWidth: 1, borderColor: '#ECEEF1' },
+  popupTitle: { fontSize: 18, fontWeight: '800', color: '#252930', textTransform: 'capitalize' },
+  filterBody: { flex: 1, paddingHorizontal: 22, paddingTop: 8 },
+  filterRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderColor: '#ECEEF1', paddingHorizontal: 4 },
+  rowText: { flex: 1, gap: 6 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#252930' },
+  rowValue: { fontSize: 12, color: '#858B94' },
+  priceSection: { paddingHorizontal: 4, paddingTop: 22, gap: 4 },
+  priceHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  priceValue: { fontSize: 13, fontWeight: '700', color: accent },
+  sliderLabel: { marginTop: 5, fontSize: 10, fontWeight: '600', color: '#858B94' },
+  priceEnds: { flexDirection: 'row', justifyContent: 'space-between' },
+  actions: { flexDirection: 'row', gap: 12, padding: 20, borderTopWidth: 1, borderColor: '#ECEEF1' },
+  clearButton: { width: '28%', minHeight: 52, borderRadius: 16, borderWidth: 1, borderColor: '#DADDE2', alignItems: 'center', justifyContent: 'center' },
   clearText: { color: '#343A43', fontSize: 14, fontWeight: '700' },
-  applyButton: { flex: 1, minHeight: 52, borderRadius: 16, backgroundColor: accent, alignItems: 'center', justifyContent: 'center' },
-  applyText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-  message: { minHeight: 220, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
-  messageText: { color: '#7E858F', fontSize: 13 },
-  retry: { backgroundColor: accent, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12 },
+  viewButton: { flex: 1, minHeight: 52, borderRadius: 16, backgroundColor: accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
+  viewText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  pickerBody: { flex: 1, paddingBottom: 12 },
+  optionSearch: { minHeight: 48, margin: 16, marginBottom: 8, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 14, backgroundColor: '#F4F5F7' },
+  optionInput: { flex: 1, fontSize: 14, color: '#252930', paddingVertical: 12 },
+  optionRow: { minHeight: 50, paddingHorizontal: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: '#F0F1F3' },
+  optionSelected: { backgroundColor: '#FFF3EB' },
+  optionText: { flex: 1, fontSize: 14, color: '#3D434B' },
+  optionTextSelected: { color: '#B94709', fontWeight: '700' },
+  letter: { paddingHorizontal: 22, paddingVertical: 7, backgroundColor: '#F4F5F7', color: '#858B94', fontSize: 11, fontWeight: '800' },
+  noOptions: { padding: 30, color: '#858B94', textAlign: 'center' },
+  message: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
+  muted: { color: '#858B94', fontSize: 12 },
+  pressed: { opacity: 0.65 },
 });

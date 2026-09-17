@@ -18,9 +18,9 @@ const initialState: CatalogState = {
 };
 const newCursor = () => ({ controller: null as AbortController | null, skip: 0, more: false, failed: false, active: false, matches: null as Product[] | null });
 
-export function useProducts({ query = '', category = '', brand = '', maxPrice = null }: CatalogFilters = {}) {
+export function useProducts({ query = '', category = '', brand = '', minPrice = null, maxPrice = null }: CatalogFilters = {}) {
   const [attempt, setAttempt] = useState(0);
-  const key = JSON.stringify([query, category, brand, maxPrice, attempt]);
+  const key = JSON.stringify([query, category, brand, minPrice, maxPrice, attempt]);
   const [state, setState] = useState({ ...initialState, key });
   const cursor = useRef(newCursor());
 
@@ -32,9 +32,9 @@ export function useProducts({ query = '', category = '', brand = '', maxPrice = 
     current.controller = controller;
     current.failed = false;
     const skip = firstPage ? 0 : current.skip;
-    const combined = Boolean(brand || maxPrice != null || (query && category));
+    const combined = Boolean(brand || minPrice != null || maxPrice != null || (query && category));
     const pending = combined
-      ? (current.matches ? Promise.resolve(current.matches) : fetchFilteredProducts({ query, category, brand, maxPrice }, controller.signal)).then(matches => {
+      ? (current.matches ? Promise.resolve(current.matches) : fetchFilteredProducts({ query, category, brand, minPrice, maxPrice }, controller.signal)).then(matches => {
         current.matches = matches;
         return { products: matches.slice(skip, skip + PAGE_SIZE), skip, total: matches.length, limit: PAGE_SIZE };
       })
@@ -62,7 +62,7 @@ export function useProducts({ query = '', category = '', brand = '', maxPrice = 
       if (!controller.signal.aborted) current.controller = null;
     });
     return true;
-  }, [query, category, brand, maxPrice, key]);
+  }, [query, category, brand, minPrice, maxPrice, key]);
 
   const nextPage = useCallback((explicitRetry = false) => {
     if (request(false, explicitRetry)) {

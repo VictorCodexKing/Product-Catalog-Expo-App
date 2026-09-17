@@ -19,9 +19,9 @@ test('encodes search terms and preserves API pagination', async () => {
 test('combines category, brand, and price filters across the complete search result', async () => {
   const matches = Array.from({ length: 25 }, (_, id) => ({ ...page.products[0], id: id + 1, price: id === 24 ? 7 : 12 }));
   fetchMock.mockResolvedValue({ ok: true, json: async () => ({ products: matches, total: 25, skip: 0, limit: 25 }) });
-  await expect(fetchFilteredProducts({ query: 'perfume', category: 'beauty', brand: 'Essence', maxPrice: 8 })).resolves.toEqual([matches[24]]);
+  await expect(fetchFilteredProducts({ query: 'perfume', category: 'beauty', brand: 'Essence', minPrice: 7, maxPrice: 8 })).resolves.toEqual([matches[24]]);
   expect(fetchMock.mock.calls[0][0]).toContain('/search?limit=0&skip=0&q=perfume');
-  await expect(fetchFilteredProducts({ query: 'perfume', category: 'groceries', brand: 'Essence', maxPrice: 8 })).resolves.toEqual([]);
+  await expect(fetchFilteredProducts({ query: 'perfume', category: 'groceries', brand: 'Essence', minPrice: 7, maxPrice: 8 })).resolves.toEqual([]);
 });
 
 test('builds sorted category, brand, and price facets from the catalog', async () => {
